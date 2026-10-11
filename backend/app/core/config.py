@@ -35,7 +35,6 @@ class Settings(BaseSettings):
     google_redirect_uri: str = "http://localhost:8000/integrations/google/callback"
     microsoft_client_id: str = ""
     microsoft_client_secret: str = ""
-    gemini_api_key: str = ""
 
     @computed_field
     @property
