@@ -6,6 +6,7 @@ import { settingsService } from '../../services/settingsService'
 import type { AssistantAction, ChatErrorCode, ChatEvent, Interaction } from '../../types/chat'
 import type { Settings } from '../../types/settings'
 import ActionCard from './ActionCard'
+import AssistantMessage from './AssistantMessage'
 import HistoryPanel from './HistoryPanel'
 
 /** One instruction and its reply, either loaded from the history or still streaming. */
@@ -250,7 +251,7 @@ export default function ChatPage() {
             {turns.map((turn) => (
               <div key={turn.key} className="chat-turn">
                 <p className="chat-bubble chat-user">{turn.instruction}</p>
-                {turn.response && <p className="chat-bubble chat-assistant">{turn.response}</p>}
+                {turn.response && <AssistantMessage text={turn.response} />}
                 {turn.actions.map((action) => (
                   <ActionCard
                     key={action.id}

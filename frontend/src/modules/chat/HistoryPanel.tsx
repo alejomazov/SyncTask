@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { chatService } from '../../services/chatService'
 import type { Interaction } from '../../types/chat'
 import { ACTION_STATUS_LABELS } from './ActionCard'
+import AssistantMessage from './AssistantMessage'
 
 const dateFormat = new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -48,7 +49,7 @@ export default function HistoryPanel({ modelNames }: { modelNames: Record<string
           </summary>
           <div className="history-body">
             {interaction.response ? (
-              <p className="chat-bubble chat-assistant">{interaction.response}</p>
+              <AssistantMessage text={interaction.response} />
             ) : (
               <p className="muted">Sin respuesta registrada.</p>
             )}
