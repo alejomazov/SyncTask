@@ -6,6 +6,8 @@ from app.integrations.llm import catalog
 from app.integrations.llm.catalog import AiProvider
 from app.models.user_settings import ExecutionMode
 
+CUSTOM_INSTRUCTIONS_MAX_LENGTH = 2000
+
 
 class AiModelOption(BaseModel):
     id: str
@@ -24,6 +26,8 @@ class SettingsRead(BaseModel):
     execution_mode: ExecutionMode
     ai_model: str
     ai_provider: AiProvider
+    custom_instructions: str | None
+    custom_instructions_max_length: int
     # True when the provider of the selected model has a key, so the assistant can be used.
     assistant_ready: bool
     providers: list[AiProviderStatus]
@@ -35,6 +39,14 @@ class SettingsUpdate(BaseModel):
 
     execution_mode: ExecutionMode | None = None
     ai_model: str | None = None
+    # An empty text removes the instructions.
+    custom_instructions: (
+        Annotated[
+            str,
+            StringConstraints(strip_whitespace=True, max_length=CUSTOM_INSTRUCTIONS_MAX_LENGTH),
+        ]
+        | None
+    ) = None
 
     @field_validator("ai_model")
     @classmethod

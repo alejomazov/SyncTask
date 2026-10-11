@@ -31,6 +31,8 @@ class UserSettings(Base):
     # Key for Gemini (Google).
     gemini_key_encrypted: Mapped[str | None] = mapped_column(Text)
     gemini_key_last4: Mapped[str | None] = mapped_column(String(4))
+    # Free text written by the user on how the assistant should answer and summarise.
+    custom_instructions: Mapped[str | None] = mapped_column(Text)
     # Interactions before this instant are history only; they are not sent to the model.
     conversation_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(

@@ -12,6 +12,7 @@ from app.modules.audit import service as audit
 from app.modules.audit.actions import AuditAction
 from app.modules.auth.dependencies import CurrentUser
 from app.schemas.settings import (
+    CUSTOM_INSTRUCTIONS_MAX_LENGTH,
     AiKeyUpdate,
     AiModelOption,
     AiProviderStatus,
@@ -31,6 +32,8 @@ def _read(settings: UserSettings) -> SettingsRead:
         execution_mode=settings.execution_mode,
         ai_model=settings_service.get_ai_model(settings),
         ai_provider=provider,
+        custom_instructions=settings.custom_instructions,
+        custom_instructions_max_length=CUSTOM_INSTRUCTIONS_MAX_LENGTH,
         assistant_ready=settings_service.has_ai_key(settings, provider),
         providers=[
             AiProviderStatus(
@@ -81,6 +84,15 @@ def update_settings(
     if payload.execution_mode is not None and payload.execution_mode != settings.execution_mode:
         settings = settings_service.set_execution_mode(db, settings, payload.execution_mode)
         changes["execution_mode"] = settings.execution_mode
+
+    if payload.custom_instructions is not None and payload.custom_instructions != (
+        settings.custom_instructions or ""
+    ):
+        settings = settings_service.set_custom_instructions(
+            db, settings, payload.custom_instructions
+        )
+        # The text is personal: the audit trail records that it changed, not what it says.
+        changes["custom_instructions"] = "updated" if settings.custom_instructions else "removed"
 
     if changes:
         audit.record(

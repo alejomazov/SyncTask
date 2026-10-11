@@ -33,6 +33,14 @@ def set_execution_mode(db: Session, settings: UserSettings, mode: ExecutionMode)
     return settings
 
 
+def set_custom_instructions(db: Session, settings: UserSettings, instructions: str) -> UserSettings:
+    """Store how the user wants the assistant to answer. An empty text removes it."""
+    settings.custom_instructions = instructions.strip() or None
+    db.commit()
+    db.refresh(settings)
+    return settings
+
+
 def get_ai_model(settings: UserSettings) -> str:
     return catalog.resolve_model(settings.ai_model)
 
