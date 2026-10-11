@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import admin, auth, calendar, connections, health, integrations
+from app.controllers import admin, auth, calendar, connections, health, integrations, tasks
 from app.core.config import get_settings
 from app.core.crypto import validate_encryption_key
 
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(integrations.router)
     app.include_router(connections.router)
     app.include_router(calendar.router)
+    app.include_router(tasks.router)
     return app
 
 

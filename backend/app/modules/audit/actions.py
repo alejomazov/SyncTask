@@ -12,3 +12,8 @@ class AuditAction(StrEnum):
     CONNECTION_CONNECTED = "connection.connected"
     CONNECTION_FAILED = "connection.failed"
     CONNECTION_DISCONNECTED = "connection.disconnected"
+    TASK_CREATED = "task.created"
+    TASK_UPDATED = "task.updated"
+    TASK_COMPLETED = "task.completed"
+    TASK_REOPENED = "task.reopened"
+    TASK_DELETED = "task.deleted"
