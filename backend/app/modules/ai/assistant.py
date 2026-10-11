@@ -217,6 +217,7 @@ def run_instruction(
     """
     history = load_history(db, settings)
     mode = settings.execution_mode
+    model = anthropic_client.resolve_model(settings.ai_model)
     system = _system_prompt(user, mode, datetime.now(timezone), history)
     messages = [*_history_messages(history), {"role": "user", "content": instruction}]
 
@@ -235,7 +236,7 @@ def run_instruction(
         for _ in range(MAX_ITERATIONS):
             started_text = False
             with client.messages.stream(
-                model=anthropic_client.resolve_model(settings.ai_model),
+                model=model,
                 max_tokens=MAX_TOKENS,
                 system=system,
                 tools=tools.TOOLS,
@@ -296,6 +297,7 @@ def run_instruction(
                 response="\n\n".join(reply_parts),
                 actions=recorded,
                 status=status.value,
+                model=model,
             )
         )
         db.commit()

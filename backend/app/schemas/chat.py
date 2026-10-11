@@ -19,4 +19,5 @@ class InteractionRead(BaseModel):
     response: str
     actions: list[dict[str, Any]]
     status: str
+    model: str | None
     created_at: datetime

@@ -38,6 +38,8 @@ class Interaction(Base):
         JSON().with_variant(JSONB, "postgresql"), default=list
     )
     status: Mapped[str] = mapped_column(String(20), default=InteractionStatus.COMPLETED.value)
+    # Model that answered; null for interactions stored before it was recorded.
+    model: Mapped[str | None] = mapped_column(String(64))
     # Set in Python (microsecond precision) so interactions keep a stable order.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True

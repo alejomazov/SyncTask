@@ -175,6 +175,23 @@ def test_chat_uses_the_model_chosen_by_the_user(
     send(chat, "Hola")
 
     assert [request["model"] for request in fake_claude.requests] == ["claude-haiku-5-5"] * 2
+    assert chat.get("/chat/interactions").json()[0]["model"] == "claude-haiku-5-5"
+
+
+def test_history_keeps_the_model_that_answered_each_instruction(
+    chat: TestClient, fake_claude: FakeAnthropic
+) -> None:
+    fake_claude.script = [reply("Uno"), reply("Dos")]
+
+    send(chat, "Primera")
+    chat.patch("/settings", json={"ai_model": "claude-sonnet-5-5"})
+    send(chat, "Segunda")
+
+    history = chat.get("/chat/interactions", params={"scope": "all"}).json()
+    assert [(i["instruction"], i["model"]) for i in history] == [
+        ("Primera", "claude-opus-5-5"),
+        ("Segunda", "claude-sonnet-5-5"),
+    ]
 
 
 def test_unknown_timezone_falls_back_to_utc(chat: TestClient, fake_claude: FakeAnthropic) -> None:
