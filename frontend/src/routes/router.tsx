@@ -6,8 +6,11 @@ import LoginPage from '../modules/auth/LoginPage'
 import RegisterPage from '../modules/auth/RegisterPage'
 import ChatPage from '../modules/chat/ChatPage'
 import ConnectionsPage from '../modules/connections/ConnectionsPage'
-import DashboardPage from '../modules/dashboard/DashboardPage'
+import AgendaPage from '../modules/dashboard/AgendaPage'
+import InboxPage from '../modules/dashboard/InboxPage'
+import TasksPage from '../modules/dashboard/TasksPage'
 import SettingsPage from '../modules/settings/SettingsPage'
+import TodayPage from '../modules/today/TodayPage'
 import ProtectedRoute from './ProtectedRoute'
 
 export const router = createBrowserRouter([
@@ -20,7 +23,10 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: '/', element: <Navigate to="/dashboard" replace /> },
-          { path: '/dashboard', element: <DashboardPage /> },
+          { path: '/dashboard', element: <TodayPage /> },
+          { path: '/agenda', element: <AgendaPage /> },
+          { path: '/inbox', element: <InboxPage /> },
+          { path: '/tasks', element: <TasksPage /> },
           { path: '/chat', element: <ChatPage /> },
           { path: '/connections', element: <ConnectionsPage /> },
           { path: '/settings', element: <SettingsPage /> },

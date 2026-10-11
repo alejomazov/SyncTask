@@ -75,8 +75,6 @@ export default function TasksPanel() {
 
   return (
     <section className="panel">
-      <h2>Tareas</h2>
-
       <TaskForm submitLabel="Agregar" onSubmit={createTask} />
 
       <div className="tabs" role="tablist">

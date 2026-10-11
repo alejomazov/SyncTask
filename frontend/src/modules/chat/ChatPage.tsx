@@ -180,7 +180,7 @@ export default function ChatPage() {
   return (
     <div className="chat">
       <div className="chat-header">
-        <h1>Chat</h1>
+        <h1>Asistente</h1>
         <span className="chat-model">
           Modelo: <strong>{modelNames[settings.ai_model] ?? settings.ai_model}</strong>{' '}
           <Link to="/settings">Cambiar</Link>

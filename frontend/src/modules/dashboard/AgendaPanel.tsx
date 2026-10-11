@@ -11,7 +11,11 @@ const dayFormat = new Intl.DateTimeFormat('es-CL', {
   day: 'numeric',
   month: 'long',
 })
-const timeFormat = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' })
+const timeFormat = new Intl.DateTimeFormat('es-CL', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
 
 /** Parses the start of an event in the user's local time zone. */
 function startDate(event: CalendarEvent): Date {
@@ -65,7 +69,7 @@ export default function AgendaPanel() {
 
   return (
     <section className="panel">
-      <h2>Agenda de los próximos {DAYS_AHEAD} días</h2>
+      <h2>Próximos {DAYS_AHEAD} días</h2>
 
       {failed && (
         <p className="form-error" role="alert">

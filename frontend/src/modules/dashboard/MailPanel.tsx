@@ -9,9 +9,13 @@ import type {
   MailMessagesResponse,
 } from '../../types/mail'
 
-const MESSAGE_LIMIT = 10
+const MESSAGE_LIMIT = 20
 
-const timeFormat = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' })
+const timeFormat = new Intl.DateTimeFormat('es-CL', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
 const dateFormat = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short' })
 
 /** Time for today's messages, date for older ones. */
