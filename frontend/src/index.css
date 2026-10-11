@@ -386,3 +386,118 @@ button:disabled {
 .agenda-info .muted {
   font-size: 0.85rem;
 }
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Tasks */
+
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.task-form input,
+.task-form textarea {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.task-form textarea {
+  resize: vertical;
+}
+
+.task-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.task-form-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.task-form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.task-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task-list > li {
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.task-item input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.2rem;
+}
+
+.task-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-body .muted,
+.task-due {
+  font-size: 0.85rem;
+}
+
+.task-title {
+  font-weight: 600;
+}
+
+.task-done {
+  color: var(--color-muted);
+  font-weight: 400;
+  text-decoration: line-through;
+}
+
+.task-due {
+  color: var(--color-muted);
+}
+
+.task-overdue {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+.task-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.task-actions button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+}

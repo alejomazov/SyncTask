@@ -18,6 +18,11 @@ const ACTION_LABELS: Record<string, string> = {
   'connection.connected': 'Cuenta externa conectada',
   'connection.failed': 'Conexión de cuenta fallida',
   'connection.disconnected': 'Cuenta externa desconectada',
+  'task.created': 'Tarea creada',
+  'task.updated': 'Tarea editada',
+  'task.completed': 'Tarea completada',
+  'task.reopened': 'Tarea reabierta',
+  'task.deleted': 'Tarea eliminada',
 }
 
 const REASON_LABELS: Record<string, string> = {
@@ -42,6 +47,7 @@ function describeDetail(log: AuditLog): string {
   const parts: string[] = []
   if (typeof log.detail.email === 'string') parts.push(log.detail.email)
   if (typeof log.detail.account_email === 'string') parts.push(log.detail.account_email)
+  if (typeof log.detail.title === 'string') parts.push(log.detail.title)
   if (typeof log.detail.reason === 'string') {
     parts.push(REASON_LABELS[log.detail.reason] ?? log.detail.reason)
   }

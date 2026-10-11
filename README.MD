@@ -80,6 +80,12 @@ Setup in Google Cloud Console:
 4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `TOKEN_ENCRYPTION_KEY` in `.env`, then
    restart the backend.
 
+## Tasks
+
+The internal task manager lives on the dashboard next to the agenda. Each user creates, edits,
+completes, reopens and deletes their own tasks (`/tasks`); every operation is recorded in the
+audit log.
+
 ## Administration
 
 The `/admin` view is restricted to the `admin` role. It lists accounts, creates regular accounts and enables or disables
