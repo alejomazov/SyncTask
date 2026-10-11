@@ -13,6 +13,7 @@ export default function AppLayout() {
           <NavLink to="/dashboard">Panel</NavLink>
           <NavLink to="/chat">Chat</NavLink>
           <NavLink to="/connections">Cuentas conectadas</NavLink>
+          <NavLink to="/settings">Configuración</NavLink>
           {user?.role === 'admin' && <NavLink to="/admin">Administración</NavLink>}
         </nav>
         <div className="app-user">
