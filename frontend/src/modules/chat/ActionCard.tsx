@@ -1,6 +1,6 @@
 import type { ActionStatus, AssistantAction } from '../../types/chat'
 
-const STATUS_LABELS: Record<ActionStatus, string> = {
+export const ACTION_STATUS_LABELS: Record<ActionStatus, string> = {
   pending: 'Pendiente de confirmación',
   executed: 'Ejecutada',
   rejected: 'Rechazada: no cumple el formato establecido',
@@ -21,7 +21,7 @@ export default function ActionCard({ action, enabled, onConfirm, onDiscard }: Ac
     <div className={`action-card action-${action.status}`}>
       <div>
         <strong>{action.summary}</strong>
-        <span className="action-status">{STATUS_LABELS[action.status]}</span>
+        <span className="action-status">{ACTION_STATUS_LABELS[action.status]}</span>
       </div>
       {action.status === 'pending' && (
         <span className="action-buttons">

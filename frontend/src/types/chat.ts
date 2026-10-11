@@ -15,6 +15,8 @@ export interface Interaction {
   response: string
   actions: AssistantAction[]
   status: 'completed' | 'error'
+  /** Model that answered; null for interactions stored before it was recorded. */
+  model: string | null
   created_at: string
 }
 

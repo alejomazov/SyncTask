@@ -4,7 +4,9 @@ import { Link } from 'react-router-dom'
 import { chatService } from '../../services/chatService'
 import { settingsService } from '../../services/settingsService'
 import type { AssistantAction, ChatErrorCode, ChatEvent, Interaction } from '../../types/chat'
+import type { Settings } from '../../types/settings'
 import ActionCard from './ActionCard'
+import HistoryPanel from './HistoryPanel'
 
 /** One instruction and its reply, either loaded from the history or still streaming. */
 interface Turn {
@@ -43,7 +45,8 @@ function toTurn(interaction: Interaction): Turn {
 
 export default function ChatPage() {
   const [turns, setTurns] = useState<Turn[] | null>(null)
-  const [keyConfigured, setKeyConfigured] = useState<boolean | null>(null)
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [view, setView] = useState<'conversation' | 'history'>('conversation')
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [activity, setActivity] = useState<string | null>(null)
@@ -53,8 +56,8 @@ export default function ChatPage() {
 
   useEffect(() => {
     Promise.all([settingsService.get(), chatService.listConversation()])
-      .then(([settings, interactions]) => {
-        setKeyConfigured(settings.ai_key_configured)
+      .then(([loadedSettings, interactions]) => {
+        setSettings(loadedSettings)
         setTurns(interactions.map(toTurn))
       })
       .catch(() => setPageError('No se pudo cargar el chat.'))
@@ -62,7 +65,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' })
-  }, [turns, activity])
+  }, [turns, activity, view])
 
   function updateTurn(key: string, change: (turn: Turn) => Turn) {
     setTurns((current) => current?.map((turn) => (turn.key === key ? change(turn) : turn)) ?? null)
@@ -156,7 +159,7 @@ export default function ChatPage() {
     }
   }
 
-  if (turns === null || keyConfigured === null) {
+  if (turns === null || settings === null) {
     return pageError ? (
       <p className="form-error" role="alert">
         {pageError}
@@ -166,10 +169,19 @@ export default function ChatPage() {
     )
   }
 
+  const keyConfigured = settings.ai_key_configured
+  const modelNames = Object.fromEntries(
+    settings.available_models.map((model) => [model.id, model.name]),
+  )
+
   return (
     <div className="chat">
       <div className="chat-header">
         <h1>Chat</h1>
+        <span className="chat-model">
+          Modelo: <strong>{modelNames[settings.ai_model] ?? settings.ai_model}</strong>{' '}
+          <Link to="/settings">Cambiar</Link>
+        </span>
         <button
           type="button"
           className="button-secondary"
@@ -177,6 +189,27 @@ export default function ChatPage() {
           onClick={() => void newConversation()}
         >
           Nueva conversación
+        </button>
+      </div>
+
+      <div className="tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === 'conversation'}
+          className={view === 'conversation' ? 'tab tab-active' : 'tab'}
+          onClick={() => setView('conversation')}
+        >
+          Conversación
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === 'history'}
+          className={view === 'history' ? 'tab tab-active' : 'tab'}
+          onClick={() => setView('history')}
+        >
+          Historial
         </button>
       </div>
 
@@ -194,52 +227,58 @@ export default function ChatPage() {
         </p>
       )}
 
-      <div className="chat-messages" aria-live="polite">
-        {turns.length === 0 && keyConfigured && (
-          <p className="muted">
-            Escribe una instrucción, por ejemplo: «¿Qué tengo esta semana?» o «Crea una tarea para
-            enviar el informe el viernes a las 10».
-          </p>
-        )}
-        {turns.map((turn) => (
-          <div key={turn.key} className="chat-turn">
-            <p className="chat-bubble chat-user">{turn.instruction}</p>
-            {turn.response && <p className="chat-bubble chat-assistant">{turn.response}</p>}
-            {turn.actions.map((action) => (
-              <ActionCard
-                key={action.id}
-                action={action}
-                enabled={!sending && !resolving}
-                onConfirm={() => void resolveAction(turn, action, true)}
-                onDiscard={() => void resolveAction(turn, action, false)}
-              />
-            ))}
-            {turn.error && (
-              <p className="form-error" role="alert">
-                {turn.error}
+      {view === 'history' ? (
+        <HistoryPanel modelNames={modelNames} />
+      ) : (
+        <>
+          <div className="chat-messages" aria-live="polite">
+            {turns.length === 0 && keyConfigured && (
+              <p className="muted">
+                Escribe una instrucción, por ejemplo: «¿Qué tengo esta semana?» o «Crea una tarea
+                para enviar el informe el viernes a las 10».
               </p>
             )}
+            {turns.map((turn) => (
+              <div key={turn.key} className="chat-turn">
+                <p className="chat-bubble chat-user">{turn.instruction}</p>
+                {turn.response && <p className="chat-bubble chat-assistant">{turn.response}</p>}
+                {turn.actions.map((action) => (
+                  <ActionCard
+                    key={action.id}
+                    action={action}
+                    enabled={!sending && !resolving}
+                    onConfirm={() => void resolveAction(turn, action, true)}
+                    onDiscard={() => void resolveAction(turn, action, false)}
+                  />
+                ))}
+                {turn.error && (
+                  <p className="form-error" role="alert">
+                    {turn.error}
+                  </p>
+                )}
+              </div>
+            ))}
+            {activity && <p className="chat-activity">{activity}</p>}
+            <div ref={bottomRef} />
           </div>
-        ))}
-        {activity && <p className="chat-activity">{activity}</p>}
-        <div ref={bottomRef} />
-      </div>
 
-      <form className="chat-form" onSubmit={handleSubmit}>
-        <textarea
-          rows={2}
-          maxLength={4000}
-          placeholder="Escribe una instrucción…"
-          aria-label="Instrucción para el asistente"
-          disabled={!keyConfigured}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-        <button type="submit" disabled={!keyConfigured || sending || !input.trim()}>
-          {sending ? 'Enviando…' : 'Enviar'}
-        </button>
-      </form>
+          <form className="chat-form" onSubmit={handleSubmit}>
+            <textarea
+              rows={2}
+              maxLength={4000}
+              placeholder="Escribe una instrucción…"
+              aria-label="Instrucción para el asistente"
+              disabled={!keyConfigured}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button type="submit" disabled={!keyConfigured || sending || !input.trim()}>
+              {sending ? 'Enviando…' : 'Enviar'}
+            </button>
+          </form>
+        </>
+      )}
     </div>
   )
 }

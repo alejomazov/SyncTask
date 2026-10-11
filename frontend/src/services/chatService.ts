@@ -4,6 +4,8 @@ import { apiFetch, apiStream } from './apiClient'
 export const chatService = {
   /** Interactions of the current conversation, oldest first. */
   listConversation: () => apiFetch<Interaction[]>('/chat/interactions'),
+  /** The most recent interactions across every conversation, oldest first. */
+  listHistory: () => apiFetch<Interaction[]>('/chat/interactions?scope=all'),
   sendMessage: (message: string, onEvent: (event: ChatEvent) => void) =>
     apiStream<ChatEvent>(
       '/chat/messages',
