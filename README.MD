@@ -64,12 +64,28 @@ Users register and sign in with email and password (`/auth/register`, `/auth/log
 `/auth/logout`, `/auth/me`). The session is a JWT stored in an `httpOnly` cookie. Accounts have
 a role (`user` or `admin`) and can be disabled by setting `is_active` to false.
 
+## Google Calendar
+
+Each user connects one or more Google accounts from the "Cuentas conectadas" page
+(OAuth 2.0 authorization code flow, read-only `calendar.readonly` scope). Tokens are stored
+encrypted with AES-256-GCM; events are never stored and are read from Google on demand
+(`/calendar/events`).
+
+Setup in Google Cloud Console:
+
+1. Create a project and enable the Google Calendar API.
+2. Configure the OAuth consent screen (external, testing) and add the test users.
+3. Create an OAuth client of type "Web application" with the redirect URI
+   `http://localhost:8000/integrations/google/callback`.
+4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `TOKEN_ENCRYPTION_KEY` in `.env`, then
+   restart the backend.
+
 ## Administration
 
 The `/admin` view is restricted to the `admin` role. It lists accounts, creates regular accounts and enables or disables
 them (`/admin/users`), and shows the audit log (`/admin/audit-logs`), which records account
-registration, sign-in, sign-out and account status changes. The OAuth connections tab is a
-placeholder until account connection is implemented.
+registration, sign-in, sign-out, account status changes and account connections. The
+connections tab shows the status of every user's connected accounts, never their tokens.
 
 ## Development
 
