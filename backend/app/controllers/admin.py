@@ -14,7 +14,8 @@ from app.modules.auth.dependencies import AdminUser, require_admin
 from app.schemas.admin import AuditLogRead, UserStatusUpdate
 from app.schemas.auth import UserCreate, UserRead
 from app.schemas.common import Page
-from app.services import users
+from app.schemas.connections import AdminConnectionRead
+from app.services import connections, users
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -106,4 +107,10 @@ def list_audit_logs(
         page=page,
         page_size=page_size,
     )
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+@router.get("/connections", response_model=Page[AdminConnectionRead])
+def list_connections(db: DbSession, page: PageNumber = 1, page_size: PageSize = 20) -> dict:
+    items, total = connections.list_all_accounts(db, page=page, page_size=page_size)
     return {"items": items, "total": total, "page": page, "page_size": page_size}
