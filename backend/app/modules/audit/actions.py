@@ -9,3 +9,6 @@ class AuditAction(StrEnum):
     ADMIN_USER_CREATED = "admin.user_created"
     ADMIN_USER_ENABLED = "admin.user_enabled"
     ADMIN_USER_DISABLED = "admin.user_disabled"
+    CONNECTION_CONNECTED = "connection.connected"
+    CONNECTION_FAILED = "connection.failed"
+    CONNECTION_DISCONNECTED = "connection.disconnected"
