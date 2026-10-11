@@ -101,6 +101,11 @@ its format before running. Depending on the user's execution mode, actions that 
 wait for confirmation or run immediately; deleting a task always asks for confirmation. Each
 instruction is stored as an interaction with its proposed actions and their outcome.
 
+Users can also write their own instructions in "Configuración" (up to 2000 characters) on how
+the assistant should answer and summarise their tasks and calendars. The text is added to the
+system prompt of either provider as style preferences: it changes tone, length, order and
+language, but not the rules above.
+
 ## Administration
 
 The `/admin` view is restricted to the `admin` role. It lists accounts, creates regular accounts and enables or disables
