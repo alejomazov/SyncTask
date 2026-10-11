@@ -15,11 +15,18 @@ const ACTION_LABELS: Record<string, string> = {
   'admin.user_created': 'Cuenta creada por administrador',
   'admin.user_enabled': 'Cuenta habilitada',
   'admin.user_disabled': 'Cuenta deshabilitada',
+  'connection.connected': 'Cuenta externa conectada',
+  'connection.failed': 'Conexión de cuenta fallida',
+  'connection.disconnected': 'Cuenta externa desconectada',
 }
 
 const REASON_LABELS: Record<string, string> = {
   invalid_credentials: 'credenciales inválidas',
   account_disabled: 'cuenta deshabilitada',
+  invalid_state: 'solicitud no válida',
+  access_denied: 'el usuario no autorizó',
+  permission_not_granted: 'permiso de calendario no concedido',
+  provider_error: 'error del proveedor',
 }
 
 interface Filters {
@@ -34,6 +41,7 @@ const EMPTY_FILTERS: Filters = { action: '', actorEmail: '', dateFrom: '', dateT
 function describeDetail(log: AuditLog): string {
   const parts: string[] = []
   if (typeof log.detail.email === 'string') parts.push(log.detail.email)
+  if (typeof log.detail.account_email === 'string') parts.push(log.detail.account_email)
   if (typeof log.detail.reason === 'string') {
     parts.push(REASON_LABELS[log.detail.reason] ?? log.detail.reason)
   }
