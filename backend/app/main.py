@@ -9,6 +9,7 @@ from app.controllers import (
     connections,
     health,
     integrations,
+    mail,
     settings,
     tasks,
 )
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(integrations.router)
     app.include_router(connections.router)
     app.include_router(calendar.router)
+    app.include_router(mail.router)
     app.include_router(tasks.router)
     app.include_router(settings.router)
     app.include_router(chat.router)

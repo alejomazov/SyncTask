@@ -15,6 +15,8 @@ class ConnectedAccountRead(BaseModel):
     provider: str
     account_email: str
     status: str
+    # False for accounts connected before the mail permission existed, or without granting it.
+    mail_enabled: bool
     created_at: datetime
 
 

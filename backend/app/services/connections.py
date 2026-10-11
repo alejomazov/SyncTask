@@ -1,5 +1,6 @@
 import secrets
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -189,3 +190,21 @@ def get_access_token(db: Session, account: ConnectedAccount) -> str:
     except crypto.DecryptionError as exc:
         _mark_needs_reauth(db, account)
         raise ReauthorizationRequiredError from exc
+
+
+def call_google[T](db: Session, account: ConnectedAccount, call: Callable[[str], T]) -> T:
+    """Run a Google API call with the account's access token.
+
+    The token may have been invalidated before its expiry, so a rejected call is tried once
+    more with a fresh one before the account is marked for reauthorization.
+    """
+    access_token = get_access_token(db, account)
+    try:
+        return call(access_token)
+    except google.GoogleAuthError:
+        access_token = refresh_account_token(db, account)
+        try:
+            return call(access_token)
+        except google.GoogleAuthError as exc:
+            _mark_needs_reauth(db, account)
+            raise ReauthorizationRequiredError from exc

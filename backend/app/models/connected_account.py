@@ -6,6 +6,7 @@ from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, Uui
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.integrations.google.client import GMAIL_READONLY_SCOPE
 from app.models.user import User
 
 
@@ -49,3 +50,8 @@ class ConnectedAccount(Base):
     @property
     def user_full_name(self) -> str:
         return self.user.full_name
+
+    @property
+    def mail_enabled(self) -> bool:
+        """Whether the user granted the permission to read the mail of this account."""
+        return GMAIL_READONLY_SCOPE in self.scopes.split()

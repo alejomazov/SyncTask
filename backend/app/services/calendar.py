@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.integrations.google import client as google
-from app.models.connected_account import ConnectedAccount, ConnectionStatus, Provider
+from app.models.connected_account import ConnectedAccount, Provider
 from app.services import connections
 
 
@@ -63,18 +63,9 @@ def _to_event(raw: dict, account: ConnectedAccount) -> CalendarEvent | None:
 def _fetch_account_events(
     db: Session, account: ConnectedAccount, time_min: datetime, time_max: datetime
 ) -> list[dict]:
-    access_token = connections.get_access_token(db, account)
-    try:
-        return google.list_events(access_token, time_min=time_min, time_max=time_max)
-    except google.GoogleAuthError:
-        # The token may have been invalidated before its expiry; try once with a fresh one.
-        access_token = connections.refresh_account_token(db, account)
-        try:
-            return google.list_events(access_token, time_min=time_min, time_max=time_max)
-        except google.GoogleAuthError as exc:
-            account.status = ConnectionStatus.NEEDS_REAUTH.value
-            db.commit()
-            raise connections.ReauthorizationRequiredError from exc
+    return connections.call_google(
+        db, account, lambda token: google.list_events(token, time_min=time_min, time_max=time_max)
+    )
 
 
 def list_events(
