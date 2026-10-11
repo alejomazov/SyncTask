@@ -6,6 +6,7 @@ import { adminService } from '../../services/adminService'
 import type { Page } from '../../types/admin'
 import type { User } from '../../types/user'
 import { useAuth } from '../auth/useAuth'
+import CreateUserForm from './CreateUserForm'
 import { errorMessage, formatDateTime } from './format'
 
 const PAGE_SIZE = 10
@@ -18,6 +19,8 @@ export default function UsersTab() {
   const [page, setPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -31,6 +34,12 @@ export default function UsersTab() {
   useEffect(() => {
     void load()
   }, [load])
+
+  async function handleCreated(created: User) {
+    setCreating(false)
+    setNotice(`Cuenta creada para ${created.email}.`)
+    await load()
+  }
 
   function handleSearch(event: FormEvent) {
     event.preventDefault()
@@ -68,7 +77,25 @@ export default function UsersTab() {
           onChange={(e) => setSearchInput(e.target.value)}
         />
         <button type="submit">Buscar</button>
+        <button
+          type="button"
+          className="button-secondary toolbar-end"
+          onClick={() => {
+            setNotice(null)
+            setCreating(!creating)
+          }}
+        >
+          {creating ? 'Cancelar' : 'Nueva cuenta'}
+        </button>
       </form>
+
+      {creating && <CreateUserForm onCreated={(created) => void handleCreated(created)} />}
+
+      {notice && (
+        <p className="form-success" role="status">
+          {notice}
+        </p>
+      )}
 
       {error && (
         <p className="form-error" role="alert">

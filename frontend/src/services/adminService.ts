@@ -17,6 +17,12 @@ export interface AuditLogParams {
   page_size?: number
 }
 
+export interface CreateUserPayload {
+  full_name: string
+  email: string
+  password: string
+}
+
 function toQuery(params: object): string {
   const query = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
@@ -29,6 +35,8 @@ function toQuery(params: object): string {
 export const adminService = {
   listUsers: (params: UserListParams = {}) =>
     apiFetch<Page<User>>(`/admin/users${toQuery(params)}`),
+  createUser: (payload: CreateUserPayload) =>
+    apiFetch<User>('/admin/users', { method: 'POST', body: JSON.stringify(payload) }),
   setUserActive: (userId: string, isActive: boolean) =>
     apiFetch<User>(`/admin/users/${userId}`, {
       method: 'PATCH',

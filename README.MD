@@ -66,7 +66,7 @@ a role (`user` or `admin`) and can be disabled by setting `is_active` to false.
 
 ## Administration
 
-The `/admin` view is restricted to the `admin` role. It lists accounts and enables or disables
+The `/admin` view is restricted to the `admin` role. It lists accounts, creates regular accounts and enables or disables
 them (`/admin/users`), and shows the audit log (`/admin/audit-logs`), which records account
 registration, sign-in, sign-out and account status changes. The OAuth connections tab is a
 placeholder until account connection is implemented.

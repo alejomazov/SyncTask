@@ -12,6 +12,7 @@ const ACTION_LABELS: Record<string, string> = {
   'auth.login': 'Inicio de sesión',
   'auth.login_failed': 'Inicio de sesión fallido',
   'auth.logout': 'Cierre de sesión',
+  'admin.user_created': 'Cuenta creada por administrador',
   'admin.user_enabled': 'Cuenta habilitada',
   'admin.user_disabled': 'Cuenta deshabilitada',
 }
