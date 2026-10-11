@@ -64,17 +64,24 @@ Users register and sign in with email and password (`/auth/register`, `/auth/log
 `/auth/logout`, `/auth/me`). The session is a JWT stored in an `httpOnly` cookie. Accounts have
 a role (`user` or `admin`) and can be disabled by setting `is_active` to false.
 
-## Google Calendar
+## Google Calendar and Gmail
 
 Each user connects one or more Google accounts from the "Cuentas conectadas" page
-(OAuth 2.0 authorization code flow, read-only `calendar.readonly` scope). Tokens are stored
-encrypted with AES-256-GCM; events are never stored and are read from Google on demand
-(`/calendar/events`).
+(OAuth 2.0 authorization code flow, read-only `calendar.readonly` and `gmail.readonly`
+scopes). Tokens are stored encrypted with AES-256-GCM; events and emails are never stored and
+are read from Google on demand (`/calendar/events`, `/mail/messages`).
+
+The panel shows the latest inbox messages of every connected account, and the assistant can
+list and read them. Accounts connected before the mail permission existed keep their calendar
+and show "Falta permiso de correo" until the user connects them again. Email text is written
+by third parties, so the assistant treats it as data: after it reads mail, every action of that
+instruction waits for the user's confirmation, even in automatic mode.
 
 Setup in Google Cloud Console:
 
-1. Create a project and enable the Google Calendar API.
-2. Configure the OAuth consent screen (external, testing) and add the test users.
+1. Create a project and enable the Google Calendar API and the Gmail API.
+2. Configure the OAuth consent screen (external, testing), add the `calendar.readonly` and
+   `gmail.readonly` scopes and add the test users.
 3. Create an OAuth client of type "Web application" with the redirect URI
    `http://localhost:8000/integrations/google/callback`.
 4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `TOKEN_ENCRYPTION_KEY` in `.env`, then
