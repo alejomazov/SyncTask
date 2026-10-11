@@ -1,22 +1,32 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.controllers import admin, auth, calendar, connections, health, integrations, tasks
+from app.controllers import (
+    admin,
+    auth,
+    calendar,
+    chat,
+    connections,
+    health,
+    integrations,
+    settings,
+    tasks,
+)
 from app.core.config import get_settings
 from app.core.crypto import validate_encryption_key
 
 
 def create_app() -> FastAPI:
-    settings = get_settings()
-    if not settings.jwt_secret_key:
+    config = get_settings()
+    if not config.jwt_secret_key:
         raise RuntimeError("JWT_SECRET_KEY must be set")
     validate_encryption_key()
 
-    app = FastAPI(title=settings.app_name)
+    app = FastAPI(title=config.app_name)
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=config.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -29,6 +39,8 @@ def create_app() -> FastAPI:
     app.include_router(connections.router)
     app.include_router(calendar.router)
     app.include_router(tasks.router)
+    app.include_router(settings.router)
+    app.include_router(chat.router)
     return app
 
 
