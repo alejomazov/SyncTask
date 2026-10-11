@@ -48,10 +48,21 @@ docker compose up --build   # backend on http://localhost:8000 (docs at /docs)
 ```
 
 ```bash
+docker compose exec backend alembic upgrade head                 # create the database schema
+docker compose exec backend python -m app.scripts.create_admin   # first admin, from ADMIN_EMAIL / ADMIN_PASSWORD
+```
+
+```bash
 cd frontend
 npm install
 npm run dev                 # frontend on http://localhost:5173
 ```
+
+## Authentication
+
+Users register and sign in with email and password (`/auth/register`, `/auth/login`,
+`/auth/logout`, `/auth/me`). The session is a JWT stored in an `httpOnly` cookie. Accounts have
+a role (`user` or `admin`) and can be disabled by setting `is_active` to false.
 
 ## Development
 
