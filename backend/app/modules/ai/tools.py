@@ -30,6 +30,16 @@ class GetCalendarEventsInput(_ToolInput):
         return self
 
 
+class ListEmailsInput(_ToolInput):
+    query: Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)] | None
+    unread_only: bool
+
+
+class GetEmailInput(_ToolInput):
+    account_id: uuid.UUID
+    message_id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{1,64}$")]
+
+
 class CreateTaskInput(_ToolInput):
     title: Title
     description: Description | None
@@ -66,6 +76,8 @@ class DeleteTaskInput(_ToolInput):
 INPUT_MODELS: dict[str, type[_ToolInput]] = {
     "list_tasks": ListTasksInput,
     "get_calendar_events": GetCalendarEventsInput,
+    "list_emails": ListEmailsInput,
+    "get_email": GetEmailInput,
     "create_task": CreateTaskInput,
     "update_task": UpdateTaskInput,
     "set_task_status": SetTaskStatusInput,
@@ -73,7 +85,10 @@ INPUT_MODELS: dict[str, type[_ToolInput]] = {
 }
 
 # Tools that only read data run immediately; the rest go through the execution mode (RF14).
-READ_ONLY_TOOLS = frozenset({"list_tasks", "get_calendar_events"})
+READ_ONLY_TOOLS = frozenset({"list_tasks", "get_calendar_events", "list_emails", "get_email"})
+# Tools whose results carry text written by third parties. Once one has run, every action of
+# the same instruction waits for confirmation, whatever the execution mode.
+UNTRUSTED_CONTENT_TOOLS = frozenset({"list_emails", "get_email"})
 # Irreversible actions ask for confirmation even in automatic mode.
 ALWAYS_CONFIRM_TOOLS = frozenset({"delete_task"})
 
@@ -109,6 +124,29 @@ TOOLS: list[dict[str, Any]] = [
         {
             "start": {"type": "string", "description": _ISO_HINT},
             "end": {"type": "string", "description": _ISO_HINT},
+        },
+    ),
+    _tool(
+        "list_emails",
+        "List the most recent messages in the inbox of the user's connected Gmail accounts, "
+        "newest first: sender, subject, date, a short snippet and whether each is unread. "
+        "Read-only: emails cannot be sent, answered, archived or marked as read.",
+        {
+            "query": {
+                **_NULLABLE_STRING,
+                "description": "Optional Gmail search, for example 'from:juan@example.com' or "
+                "'newer_than:2d factura'; null for the latest messages.",
+            },
+            "unread_only": {"type": "boolean", "description": "True to list only unread ones."},
+        },
+    ),
+    _tool(
+        "get_email",
+        "Read the full text of one email. Call it when the snippet from list_emails is not "
+        "enough, for example to summarise a message. Attachments are not available.",
+        {
+            "account_id": {"type": "string", "description": "account_id from list_emails."},
+            "message_id": {"type": "string", "description": "id of the email, from list_emails."},
         },
     ),
     _tool(
