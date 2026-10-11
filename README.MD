@@ -64,6 +64,13 @@ Users register and sign in with email and password (`/auth/register`, `/auth/log
 `/auth/logout`, `/auth/me`). The session is a JWT stored in an `httpOnly` cookie. Accounts have
 a role (`user` or `admin`) and can be disabled by setting `is_active` to false.
 
+## Administration
+
+The `/admin` view is restricted to the `admin` role. It lists accounts and enables or disables
+them (`/admin/users`), and shows the audit log (`/admin/audit-logs`), which records account
+registration, sign-in, sign-out and account status changes. The OAuth connections tab is a
+placeholder until account connection is implemented.
+
 ## Development
 
 ```bash
