@@ -1,17 +1,16 @@
 """Runs one instruction through Claude: propose actions, validate them, execute or hold them."""
 
-import json
 import uuid
 from collections.abc import Iterator
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import anthropic
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.integrations.anthropic import client as anthropic_client
+from app.integrations.llm import catalog, registry
+from app.integrations.llm.base import ProviderError, ToolCall, ToolResult
 from app.models.interaction import ActionStatus, Interaction, InteractionStatus
 from app.models.user import User
 from app.models.user_settings import ExecutionMode, UserSettings
@@ -19,7 +18,6 @@ from app.modules.ai import actions, tools
 from app.modules.audit import service as audit
 from app.modules.audit.actions import AuditAction
 
-MAX_TOKENS = 16000
 MAX_ITERATIONS = 8
 HISTORY_LIMIT = 20
 
@@ -27,6 +25,7 @@ _REFUSAL_NOTE = "No puedo ayudar con esa solicitud."
 _TRUNCATED_NOTE = (
     "La respuesta quedó incompleta porque era demasiado larga. Intenta acotar la instrucción."
 )
+_INVALID_CALL_NOTE = "No pude generar una acción válida para esa instrucción. Intenta reformularla."
 _ITERATION_NOTE = (
     "Detuve la ejecución porque la instrucción requería demasiados pasos. Intenta dividirla."
 )
@@ -104,59 +103,35 @@ def load_history(db: Session, settings: UserSettings) -> list[Interaction]:
     return list(reversed(recent))
 
 
-def _history_messages(history: list[Interaction]) -> list[dict[str, Any]]:
-    messages: list[dict[str, Any]] = []
-    for interaction in history:
-        if not interaction.response:
-            continue
-        messages.append({"role": "user", "content": interaction.instruction})
-        messages.append({"role": "assistant", "content": interaction.response})
-    return messages
+def _history_pairs(history: list[Interaction]) -> list[tuple[str, str]]:
+    """Past instructions with their replies; turns that produced no reply are left out."""
+    return [
+        (interaction.instruction, interaction.response)
+        for interaction in history
+        if interaction.response
+    ]
 
 
-def _error_code(exc: Exception) -> str:
-    if isinstance(exc, anthropic.AuthenticationError):
-        return "invalid_key"
-    if isinstance(exc, anthropic.PermissionDeniedError):
-        return "key_without_access"
-    if isinstance(exc, anthropic.RateLimitError):
-        return "rate_limited"
-    if isinstance(exc, anthropic.APIStatusError) and exc.status_code < 500:
-        return "provider_rejected"
-    return "provider_unavailable"
-
-
-def _handle_tool_use(
+def _handle_tool_call(
     db: Session,
     user: User,
     mode: str,
     timezone: ZoneInfo,
     ip_address: str | None,
-    block: Any,
+    call: ToolCall,
     recorded: list[dict[str, Any]],
-) -> tuple[dict[str, Any], dict[str, Any] | None]:
+) -> tuple[ToolResult, dict[str, Any] | None]:
     """Validate one proposed action and execute it or hold it.
 
     Returns the tool result for the model and, for actions that modify data, the record
     shown to the user.
     """
-
-    def tool_result(content: Any, *, is_error: bool = False) -> dict[str, Any]:
-        result = {
-            "type": "tool_result",
-            "tool_use_id": block.id,
-            "content": json.dumps(content, ensure_ascii=False),
-        }
-        if is_error:
-            result["is_error"] = True
-        return result
-
     try:
-        parsed = actions.validate(db, user.id, block.name, block.input)
+        parsed = actions.validate(db, user.id, call.name, call.input)
     except actions.ActionRejectedError as exc:
         record = actions.new_action_record(
-            block.name,
-            block.input if isinstance(block.input, dict) else {},
+            call.name,
+            call.input if isinstance(call.input, dict) else {},
             "Acción propuesta con formato inválido",
             ActionStatus.REJECTED,
             exc.reason,
@@ -166,37 +141,36 @@ def _handle_tool_use(
             db,
             AuditAction.AI_ACTION_REJECTED,
             actor_id=user.id,
-            detail={"tool": block.name, "reason": exc.reason},
+            detail={"tool": call.name, "reason": exc.reason},
             ip_address=ip_address,
         )
-        return tool_result(
-            {"error": f"Invalid action, not executed: {exc.reason}"}, is_error=True
-        ), record
+        content = {"error": f"Invalid action, not executed: {exc.reason}"}
+        return ToolResult(call, content, is_error=True), record
 
-    if block.name in tools.READ_ONLY_TOOLS:
-        return tool_result(actions.execute(db, user.id, parsed, ip_address=ip_address)), None
+    if call.name in tools.READ_ONLY_TOOLS:
+        return ToolResult(call, actions.execute(db, user.id, parsed, ip_address=ip_address)), None
 
-    summary = actions.summarize(db, user.id, block.name, parsed, timezone)
+    summary = actions.summarize(db, user.id, call.name, parsed, timezone)
     action_input = parsed.model_dump(mode="json")
     needs_confirmation = (
-        mode == ExecutionMode.CONFIRM.value or block.name in tools.ALWAYS_CONFIRM_TOOLS
+        mode == ExecutionMode.CONFIRM.value or call.name in tools.ALWAYS_CONFIRM_TOOLS
     )
     if needs_confirmation:
-        record = actions.new_action_record(block.name, action_input, summary, ActionStatus.PENDING)
+        record = actions.new_action_record(call.name, action_input, summary, ActionStatus.PENDING)
         recorded.append(record)
         audit.record(
             db,
             AuditAction.AI_ACTION_PROPOSED,
             actor_id=user.id,
-            detail={"tool": block.name, "summary": summary},
+            detail={"tool": call.name, "summary": summary},
             ip_address=ip_address,
         )
-        return tool_result(_PENDING_RESULT), record
+        return ToolResult(call, _PENDING_RESULT), record
 
     result = actions.execute(db, user.id, parsed, ip_address=ip_address)
-    record = actions.new_action_record(block.name, action_input, summary, ActionStatus.EXECUTED)
+    record = actions.new_action_record(call.name, action_input, summary, ActionStatus.EXECUTED)
     recorded.append(record)
-    return tool_result({"status": "executed", **result}), record
+    return ToolResult(call, {"status": "executed", **result}), record
 
 
 def run_instruction(
@@ -217,9 +191,8 @@ def run_instruction(
     """
     history = load_history(db, settings)
     mode = settings.execution_mode
-    model = anthropic_client.resolve_model(settings.ai_model)
+    model = catalog.resolve_model(settings.ai_model)
     system = _system_prompt(user, mode, datetime.now(timezone), history)
-    messages = [*_history_messages(history), {"role": "user", "content": instruction}]
 
     reply_parts: list[str] = []
     recorded: list[dict[str, Any]] = []
@@ -232,48 +205,43 @@ def run_instruction(
         yield {"type": "text", "delta": prefix + text}
 
     try:
-        client = anthropic_client.create_client(api_key)
+        session = registry.open_session(
+            api_key=api_key,
+            model=model,
+            system=system,
+            tools=tools.TOOLS,
+            history=_history_pairs(history),
+            instruction=instruction,
+        )
         for _ in range(MAX_ITERATIONS):
             started_text = False
-            with client.messages.stream(
-                model=model,
-                max_tokens=MAX_TOKENS,
-                system=system,
-                tools=tools.TOOLS,
-                messages=messages,
-                thinking={"type": "adaptive"},
-                output_config={"effort": "medium"},
-            ) as stream:
-                for event in stream:
-                    if event.type == "text":
-                        prefix = "\n\n" if reply_parts and not started_text else ""
-                        started_text = True
-                        yield {"type": "text", "delta": prefix + event.text}
-                response = stream.get_final_message()
+            for delta in session.stream_turn():
+                prefix = "\n\n" if reply_parts and not started_text else ""
+                started_text = True
+                yield {"type": "text", "delta": prefix + delta}
+            turn = session.last_turn
+            if turn.text:
+                reply_parts.append(turn.text)
 
-            text = "".join(block.text for block in response.content if block.type == "text")
-            if text:
-                reply_parts.append(text)
-
-            if response.stop_reason == "refusal":
+            if turn.stop == "refusal":
                 yield from note(_REFUSAL_NOTE)
                 break
-
-            tool_uses = [block for block in response.content if block.type == "tool_use"]
-            if response.stop_reason == "max_tokens":
+            if turn.stop == "max_tokens":
                 # A truncated tool input can still parse as a valid object: never run it.
                 yield from note(_TRUNCATED_NOTE)
                 break
-            if not tool_uses:
+            if turn.stop == "invalid_tool_call":
+                yield from note(_INVALID_CALL_NOTE)
+                break
+            if not turn.tool_calls:
                 break
 
-            messages.append({"role": "assistant", "content": response.content})
             results = []
-            for block in tool_uses:
-                if block.name in tools.READ_ONLY_TOOLS:
-                    yield {"type": "status", "tool": block.name}
-                result, record = _handle_tool_use(
-                    db, user, mode, timezone, ip_address, block, recorded
+            for call in turn.tool_calls:
+                if call.name in tools.READ_ONLY_TOOLS:
+                    yield {"type": "status", "tool": call.name}
+                result, record = _handle_tool_call(
+                    db, user, mode, timezone, ip_address, call, recorded
                 )
                 results.append(result)
                 if record is not None:
@@ -282,12 +250,12 @@ def run_instruction(
                         "interaction_id": str(interaction_id),
                         "action": record,
                     }
-            messages.append({"role": "user", "content": results})
+            session.add_tool_results(results)
         else:
             yield from note(_ITERATION_NOTE)
-    except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+    except ProviderError as exc:
         status = InteractionStatus.ERROR
-        yield {"type": "error", "code": _error_code(exc)}
+        yield {"type": "error", "code": exc.code}
     finally:
         db.add(
             Interaction(

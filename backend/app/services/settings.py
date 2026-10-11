@@ -4,8 +4,15 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.core import crypto
-from app.integrations.anthropic import client as anthropic_client
+from app.integrations.llm import catalog, registry
+from app.integrations.llm.catalog import AiProvider
 from app.models.user_settings import ExecutionMode, UserSettings
+
+# Columns holding each provider's encrypted key and its last four characters.
+_KEY_COLUMNS: dict[AiProvider, tuple[str, str]] = {
+    AiProvider.ANTHROPIC: ("ai_key_encrypted", "ai_key_last4"),
+    AiProvider.GEMINI: ("gemini_key_encrypted", "gemini_key_last4"),
+}
 
 
 def get_settings(db: Session, user_id: uuid.UUID) -> UserSettings:
@@ -27,45 +34,73 @@ def set_execution_mode(db: Session, settings: UserSettings, mode: ExecutionMode)
 
 
 def get_ai_model(settings: UserSettings) -> str:
-    return anthropic_client.resolve_model(settings.ai_model)
+    return catalog.resolve_model(settings.ai_model)
+
+
+def get_ai_provider(settings: UserSettings) -> AiProvider:
+    return catalog.provider_of(get_ai_model(settings))
+
+
+def key_last4(settings: UserSettings, provider: AiProvider) -> str | None:
+    encrypted_column, last4_column = _KEY_COLUMNS[provider]
+    if getattr(settings, encrypted_column) is None:
+        return None
+    return getattr(settings, last4_column)
+
+
+def has_ai_key(settings: UserSettings, provider: AiProvider) -> bool:
+    return getattr(settings, _KEY_COLUMNS[provider][0]) is not None
+
+
+def get_ai_key(settings: UserSettings, provider: AiProvider) -> str | None:
+    encrypted = getattr(settings, _KEY_COLUMNS[provider][0])
+    if encrypted is None:
+        return None
+    try:
+        return crypto.decrypt(encrypted)
+    except crypto.DecryptionError:
+        return None
 
 
 def set_ai_model(db: Session, settings: UserSettings, model: str) -> UserSettings:
     """Change the assistant's model. With a key stored, the key must have access to it."""
-    api_key = get_ai_key(settings)
+    provider = catalog.provider_of(model)
+    api_key = get_ai_key(settings, provider)
     if api_key is not None:
-        anthropic_client.validate_api_key(api_key, model)
+        registry.validate_api_key(provider, api_key, model)
     settings.ai_model = model
     db.commit()
     db.refresh(settings)
     return settings
 
 
-def save_ai_key(db: Session, settings: UserSettings, api_key: str) -> UserSettings:
-    """Validate the key with Anthropic and store it encrypted. Nothing is stored if it fails."""
-    anthropic_client.validate_api_key(api_key, get_ai_model(settings))
-    settings.ai_key_encrypted = crypto.encrypt(api_key)
-    settings.ai_key_last4 = api_key[-4:]
+def save_ai_key(
+    db: Session, settings: UserSettings, provider: AiProvider, api_key: str
+) -> UserSettings:
+    """Validate the key with its provider and store it encrypted. Nothing is stored if it fails."""
+    selected = get_ai_model(settings)
+    model = (
+        selected
+        if catalog.provider_of(selected) == provider
+        else catalog.DEFAULT_MODEL_BY_PROVIDER[provider]
+    )
+    registry.validate_api_key(provider, api_key, model)
+
+    encrypted_column, last4_column = _KEY_COLUMNS[provider]
+    setattr(settings, encrypted_column, crypto.encrypt(api_key))
+    setattr(settings, last4_column, api_key[-4:])
     db.commit()
     db.refresh(settings)
     return settings
 
 
-def remove_ai_key(db: Session, settings: UserSettings) -> UserSettings:
-    settings.ai_key_encrypted = None
-    settings.ai_key_last4 = None
+def remove_ai_key(db: Session, settings: UserSettings, provider: AiProvider) -> UserSettings:
+    encrypted_column, last4_column = _KEY_COLUMNS[provider]
+    setattr(settings, encrypted_column, None)
+    setattr(settings, last4_column, None)
     db.commit()
     db.refresh(settings)
     return settings
-
-
-def get_ai_key(settings: UserSettings) -> str | None:
-    if settings.ai_key_encrypted is None:
-        return None
-    try:
-        return crypto.decrypt(settings.ai_key_encrypted)
-    except crypto.DecryptionError:
-        return None
 
 
 def start_new_conversation(db: Session, settings: UserSettings) -> UserSettings:

@@ -53,9 +53,12 @@ def send_message(
     session_factory: Annotated[SessionFactory, Depends(get_session_factory)],
 ) -> StreamingResponse:
     """Send an instruction to the assistant; the reply is streamed as Server-Sent Events."""
-    api_key = settings_service.get_ai_key(settings_service.get_settings(db, user.id))
+    settings = settings_service.get_settings(db, user.id)
+    api_key = settings_service.get_ai_key(settings, settings_service.get_ai_provider(settings))
     if api_key is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "No Claude API key is configured")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "No API key is configured for the selected model"
+        )
 
     user_id = user.id
     timezone = _timezone(payload.timezone)

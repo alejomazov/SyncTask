@@ -2,20 +2,31 @@ from typing import Annotated
 
 from pydantic import BaseModel, StringConstraints, field_validator
 
-from app.integrations.anthropic.client import AVAILABLE_MODELS
+from app.integrations.llm import catalog
+from app.integrations.llm.catalog import AiProvider
 from app.models.user_settings import ExecutionMode
 
 
 class AiModelOption(BaseModel):
     id: str
     name: str
+    provider: AiProvider
+
+
+class AiProviderStatus(BaseModel):
+    id: AiProvider
+    name: str
+    key_configured: bool
+    key_last4: str | None
 
 
 class SettingsRead(BaseModel):
     execution_mode: ExecutionMode
-    ai_key_configured: bool
-    ai_key_last4: str | None
     ai_model: str
+    ai_provider: AiProvider
+    # True when the provider of the selected model has a key, so the assistant can be used.
+    assistant_ready: bool
+    providers: list[AiProviderStatus]
     available_models: list[AiModelOption]
 
 
@@ -28,7 +39,7 @@ class SettingsUpdate(BaseModel):
     @field_validator("ai_model")
     @classmethod
     def _known_model(cls, value: str | None) -> str | None:
-        if value is not None and value not in AVAILABLE_MODELS:
+        if value is not None and not catalog.is_known_model(value):
             raise ValueError("unknown model")
         return value
 

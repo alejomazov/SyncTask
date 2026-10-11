@@ -6,7 +6,7 @@ from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.integrations.anthropic.client import DEFAULT_MODEL
+from app.integrations.llm.catalog import DEFAULT_MODEL
 
 
 class ExecutionMode(StrEnum):
@@ -24,9 +24,13 @@ class UserSettings(Base):
     ai_model: Mapped[str] = mapped_column(
         String(64), default=DEFAULT_MODEL, server_default=DEFAULT_MODEL
     )
+    # Key for Claude (Anthropic). The last four characters are kept in clear so the user
+    # can recognise which key is stored.
     ai_key_encrypted: Mapped[str | None] = mapped_column(Text)
-    # Shown in the UI so the user can recognise which key is stored.
     ai_key_last4: Mapped[str | None] = mapped_column(String(4))
+    # Key for Gemini (Google).
+    gemini_key_encrypted: Mapped[str | None] = mapped_column(Text)
+    gemini_key_last4: Mapped[str | None] = mapped_column(String(4))
     # Interactions before this instant are history only; they are not sent to the model.
     conversation_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(

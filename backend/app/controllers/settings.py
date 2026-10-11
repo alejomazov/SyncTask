@@ -4,12 +4,20 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.integrations.anthropic import client as anthropic_client
+from app.integrations.llm import catalog
+from app.integrations.llm.base import InvalidApiKeyError, ProviderUnavailableError
+from app.integrations.llm.catalog import AiProvider
 from app.models.user_settings import UserSettings
 from app.modules.audit import service as audit
 from app.modules.audit.actions import AuditAction
 from app.modules.auth.dependencies import CurrentUser
-from app.schemas.settings import AiKeyUpdate, AiModelOption, SettingsRead, SettingsUpdate
+from app.schemas.settings import (
+    AiKeyUpdate,
+    AiModelOption,
+    AiProviderStatus,
+    SettingsRead,
+    SettingsUpdate,
+)
 from app.services import settings as settings_service
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -18,14 +26,24 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 def _read(settings: UserSettings) -> SettingsRead:
+    provider = settings_service.get_ai_provider(settings)
     return SettingsRead(
         execution_mode=settings.execution_mode,
-        ai_key_configured=settings.ai_key_encrypted is not None,
-        ai_key_last4=settings.ai_key_last4,
         ai_model=settings_service.get_ai_model(settings),
+        ai_provider=provider,
+        assistant_ready=settings_service.has_ai_key(settings, provider),
+        providers=[
+            AiProviderStatus(
+                id=item,
+                name=name,
+                key_configured=settings_service.has_ai_key(settings, item),
+                key_last4=settings_service.key_last4(settings, item),
+            )
+            for item, name in catalog.PROVIDER_NAMES.items()
+        ],
         available_models=[
-            AiModelOption(id=model_id, name=name)
-            for model_id, name in anthropic_client.AVAILABLE_MODELS.items()
+            AiModelOption(id=model.id, name=model.name, provider=model.provider)
+            for model in catalog.MODELS
         ],
     )
 
@@ -49,12 +67,12 @@ def update_settings(
     if payload.ai_model is not None and payload.ai_model != settings.ai_model:
         try:
             settings = settings_service.set_ai_model(db, settings, payload.ai_model)
-        except anthropic_client.InvalidApiKeyError:
+        except InvalidApiKeyError:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_CONTENT,
                 "The stored API key has no access to this model",
             ) from None
-        except anthropic_client.ProviderUnavailableError:
+        except ProviderUnavailableError:
             raise HTTPException(
                 status.HTTP_503_SERVICE_UNAVAILABLE, "The model could not be verified right now"
             ) from None
@@ -75,30 +93,48 @@ def update_settings(
     return _read(settings)
 
 
-@router.put("/ai-key", response_model=SettingsRead)
+@router.put("/ai-keys/{provider}", response_model=SettingsRead)
 def save_ai_key(
-    payload: AiKeyUpdate, request: Request, db: DbSession, user: CurrentUser
+    provider: AiProvider,
+    payload: AiKeyUpdate,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
 ) -> SettingsRead:
     settings = settings_service.get_settings(db, user.id)
     try:
-        settings = settings_service.save_ai_key(db, settings, payload.api_key)
-    except anthropic_client.InvalidApiKeyError:
+        settings = settings_service.save_ai_key(db, settings, provider, payload.api_key)
+    except InvalidApiKeyError:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT, "The API key was rejected by Anthropic"
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "The API key was rejected by the provider"
         ) from None
-    except anthropic_client.ProviderUnavailableError:
+    except ProviderUnavailableError:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE, "The API key could not be verified right now"
         ) from None
 
-    audit.record(db, AuditAction.AI_KEY_SAVED, actor_id=user.id, ip_address=_ip(request))
+    audit.record(
+        db,
+        AuditAction.AI_KEY_SAVED,
+        actor_id=user.id,
+        detail={"provider": provider.value},
+        ip_address=_ip(request),
+    )
     return _read(settings)
 
 
-@router.delete("/ai-key", response_model=SettingsRead)
-def remove_ai_key(request: Request, db: DbSession, user: CurrentUser) -> SettingsRead:
+@router.delete("/ai-keys/{provider}", response_model=SettingsRead)
+def remove_ai_key(
+    provider: AiProvider, request: Request, db: DbSession, user: CurrentUser
+) -> SettingsRead:
     settings = settings_service.get_settings(db, user.id)
-    if settings.ai_key_encrypted is not None:
-        settings = settings_service.remove_ai_key(db, settings)
-        audit.record(db, AuditAction.AI_KEY_REMOVED, actor_id=user.id, ip_address=_ip(request))
+    if settings_service.has_ai_key(settings, provider):
+        settings = settings_service.remove_ai_key(db, settings, provider)
+        audit.record(
+            db,
+            AuditAction.AI_KEY_REMOVED,
+            actor_id=user.id,
+            detail={"provider": provider.value},
+            ip_address=_ip(request),
+        )
     return _read(settings)
