@@ -276,6 +276,8 @@ def test_request_sent_to_gemini(chat: TestClient, fake_gemini: FakeGemini) -> No
     assert [d.name for d in declarations] == [
         "list_tasks",
         "get_calendar_events",
+        "list_emails",
+        "get_email",
         "create_task",
         "update_task",
         "set_task_status",

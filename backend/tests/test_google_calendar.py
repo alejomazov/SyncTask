@@ -23,7 +23,7 @@ FULL_SCOPE = " ".join(google.SCOPES)
 
 
 class FakeGoogle:
-    """In-memory stand-in for Google's OAuth and Calendar endpoints."""
+    """In-memory stand-in for Google's OAuth, Calendar and Gmail endpoints."""
 
     def __init__(self) -> None:
         self.account_email = "ana.personal@gmail.com"
@@ -34,6 +34,8 @@ class FakeGoogle:
         self.reject_access_tokens: set[str] = set()
         self.events: list[dict] = []
         self.events_status = 200
+        self.messages: list[dict] = []
+        self.messages_status = 200
         self.revoked: list[str] = []
         self.requests: list[httpx.Request] = []
         self._issued = 0
@@ -85,6 +87,24 @@ class FakeGoogle:
             if self.events_status != 200:
                 return httpx.Response(self.events_status)
             return httpx.Response(200, json={"items": self.events})
+        if url == google.MESSAGES_URL:
+            if self.messages_status != 200:
+                return httpx.Response(self.messages_status)
+            unread_only = "is:unread" in request.url.params.get("q", "")
+            found = [
+                {"id": message["id"]}
+                for message in self.messages
+                if not unread_only or "UNREAD" in message["labelIds"]
+            ]
+            return httpx.Response(
+                200, json={"messages": found[: int(request.url.params["maxResults"])]}
+            )
+        if url.startswith(f"{google.MESSAGES_URL}/"):
+            message_id = url.rsplit("/", 1)[1]
+            for message in self.messages:
+                if message["id"] == message_id:
+                    return httpx.Response(200, json=message)
+            return httpx.Response(404, json={"error": {"code": 404}})
         raise AssertionError(f"Unexpected request to {url}")
 
     def calls_to(self, url: str) -> list[httpx.Request]:
@@ -154,7 +174,12 @@ def test_authorize_builds_read_only_consent_url(ana_client: TestClient) -> None:
     assert params["client_id"] == "test-client-id"
     assert params["redirect_uri"] == "http://localhost:8000/integrations/google/callback"
     assert params["access_type"] == "offline"
-    assert set(params["scope"].split()) == {"openid", "email", google.CALENDAR_READONLY_SCOPE}
+    assert set(params["scope"].split()) == {
+        "openid",
+        "email",
+        google.CALENDAR_READONLY_SCOPE,
+        google.GMAIL_READONLY_SCOPE,
+    }
     assert "client_secret" not in params
 
 
