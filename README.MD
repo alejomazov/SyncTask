@@ -12,7 +12,7 @@ Three-layer client-server architecture plus an external services layer.
 | Presentation      | React 18, TypeScript, React Router, Vite                |
 | Business          | Python 3.12, FastAPI (MVC), Celery + Redis              |
 | Persistence       | PostgreSQL 16, SQLAlchemy, Alembic                      |
-| External services | Google Calendar, Gmail, Microsoft Graph, Google Gemini  |
+| External services | Google Calendar, Gmail, Microsoft Graph, Claude (Anthropic) |
 
 ## Project structure
 
@@ -26,7 +26,7 @@ backend/
     controllers/   API routers (Controller)
     services/      business logic
     modules/       auth, audit, ai
-    integrations/  google, microsoft, gemini
+    integrations/  google, microsoft, anthropic
     worker/        Celery app and tasks
   alembic/         database migrations
   tests/
@@ -85,6 +85,18 @@ Setup in Google Cloud Console:
 The internal task manager lives on the dashboard next to the agenda. Each user creates, edits,
 completes, reopens and deletes their own tasks (`/tasks`); every operation is recorded in the
 audit log.
+
+## Assistant chat
+
+Each user connects Claude with their own Anthropic API key from "Configuración"; the key is
+verified with Anthropic and stored encrypted with AES-256-GCM. The chat uses the official
+`anthropic` SDK (`claude-opus-5-5`) and streams replies as Server-Sent Events.
+
+The model never changes data directly: it proposes actions through strict tools (list, create,
+edit, complete and delete tasks; read the calendar). Every proposed action is validated against
+its format before running. Depending on the user's execution mode, actions that modify data
+wait for confirmation or run immediately; deleting a task always asks for confirmation. Each
+instruction is stored as an interaction with its proposed actions and their outcome.
 
 ## Administration
 
