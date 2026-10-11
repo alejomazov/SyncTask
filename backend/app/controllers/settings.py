@@ -102,6 +102,7 @@ def save_ai_key(
     user: CurrentUser,
 ) -> SettingsRead:
     settings = settings_service.get_settings(db, user.id)
+    previous_model = settings_service.get_ai_model(settings)
     try:
         settings = settings_service.save_ai_key(db, settings, provider, payload.api_key)
     except InvalidApiKeyError:
@@ -113,12 +114,11 @@ def save_ai_key(
             status.HTTP_503_SERVICE_UNAVAILABLE, "The API key could not be verified right now"
         ) from None
 
+    detail = {"provider": provider.value}
+    if settings.ai_model != previous_model:
+        detail["ai_model"] = settings.ai_model
     audit.record(
-        db,
-        AuditAction.AI_KEY_SAVED,
-        actor_id=user.id,
-        detail={"provider": provider.value},
-        ip_address=_ip(request),
+        db, AuditAction.AI_KEY_SAVED, actor_id=user.id, detail=detail, ip_address=_ip(request)
     )
     return _read(settings)
 

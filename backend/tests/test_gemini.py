@@ -118,7 +118,7 @@ def test_save_gemini_key_validates_and_encrypts(
         "key_last4": "5678",
     }
     assert provider_status(ana_client, "anthropic")["key_configured"] is False
-    # Claude is still the selected model, so the key is checked against Gemini's default.
+    # Claude was the selected model, so the key is checked against Gemini's default.
     assert fake_gemini.models_checked == ["gemini-3.8-flash"]
     assert fake_claude.keys_used == []
 
@@ -126,7 +126,38 @@ def test_save_gemini_key_validates_and_encrypts(
     assert crypto.decrypt(stored.gemini_key_encrypted or "") == GEMINI_KEY
     assert stored.ai_key_encrypted is None
     saved = db.scalars(select(AuditLog).where(AuditLog.action == "ai.key_saved")).one()
-    assert saved.detail == {"provider": "gemini"}
+    assert saved.detail == {"provider": "gemini", "ai_model": "gemini-3.8-flash"}
+
+
+def test_first_key_selects_a_model_of_its_provider(ana_client: TestClient) -> None:
+    ana_client.patch("/settings", json={"ai_model": "claude-haiku-5-5"})
+
+    saved = ana_client.put("/settings/ai-keys/gemini", json={"api_key": GEMINI_KEY}).json()
+
+    # Haiku could not be used without a Claude key, so the assistant moves to Gemini.
+    assert saved["ai_model"] == "gemini-3.8-flash"
+    assert saved["ai_provider"] == "gemini"
+    assert saved["assistant_ready"] is True
+
+
+def test_saving_a_second_key_keeps_the_selected_model(ana_client: TestClient) -> None:
+    ana_client.put("/settings/ai-keys/anthropic", json={"api_key": CLAUDE_KEY})
+    ana_client.patch("/settings", json={"ai_model": "claude-haiku-5-5"})
+
+    saved = ana_client.put("/settings/ai-keys/gemini", json={"api_key": GEMINI_KEY}).json()
+
+    assert saved["ai_model"] == "claude-haiku-5-5"
+    assert saved["assistant_ready"] is True
+
+
+def test_rejected_key_does_not_change_the_selected_model(
+    ana_client: TestClient, fake_gemini: FakeGemini
+) -> None:
+    fake_gemini.models_error = invalid_key_error()
+
+    ana_client.put("/settings/ai-keys/gemini", json={"api_key": GEMINI_KEY})
+
+    assert ana_client.get("/settings").json()["ai_model"] == "claude-opus-5-5"
 
 
 @pytest.mark.parametrize(
@@ -206,7 +237,7 @@ def test_changing_to_a_gemini_model_checks_the_gemini_key(
     response = ana_client.patch("/settings", json={"ai_model": "gemini-3.1-pro-preview"})
 
     assert response.status_code == 422
-    assert ana_client.get("/settings").json()["ai_model"] == "claude-opus-5-5"
+    assert ana_client.get("/settings").json()["ai_model"] == "gemini-3.8-flash"
 
 
 # --- Chat ------------------------------------------------------------------------

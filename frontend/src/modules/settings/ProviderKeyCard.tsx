@@ -16,11 +16,17 @@ const KEY_SOURCES: Record<AiProviderId, string> = {
 
 interface ProviderKeyCardProps {
   provider: AiProviderStatus
+  /** Model selected before saving, to tell the user when saving a key changes it. */
+  selectedModel: string
   onChange: (settings: Settings) => void
 }
 
 /** Stores, replaces or removes the user's API key for one model provider. */
-export default function ProviderKeyCard({ provider, onChange }: ProviderKeyCardProps) {
+export default function ProviderKeyCard({
+  provider,
+  selectedModel,
+  onChange,
+}: ProviderKeyCardProps) {
   const [apiKey, setApiKey] = useState('')
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -30,9 +36,19 @@ export default function ProviderKeyCard({ provider, onChange }: ProviderKeyCardP
     setBusy(true)
     setMessage(null)
     try {
-      onChange(await settingsService.saveAiKey(provider.id, apiKey))
+      const updated = await settingsService.saveAiKey(provider.id, apiKey)
+      onChange(updated)
       setApiKey('')
-      setMessage({ text: 'La clave se verificó y quedó guardada.', ok: true })
+      const switchedTo =
+        updated.ai_model !== selectedModel
+          ? updated.available_models.find((model) => model.id === updated.ai_model)
+          : undefined
+      setMessage({
+        text: switchedTo
+          ? `La clave se verificó y quedó guardada. El asistente ahora usa ${switchedTo.name}.`
+          : 'La clave se verificó y quedó guardada.',
+        ok: true,
+      })
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0
       setMessage({

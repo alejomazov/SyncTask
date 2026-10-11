@@ -89,6 +89,10 @@ def save_ai_key(
     encrypted_column, last4_column = _KEY_COLUMNS[provider]
     setattr(settings, encrypted_column, crypto.encrypt(api_key))
     setattr(settings, last4_column, api_key[-4:])
+    if not has_ai_key(settings, catalog.provider_of(selected)):
+        # The selected model belongs to a provider without a key, so it could not be used:
+        # switch to the provider the user just connected.
+        settings.ai_model = model
     db.commit()
     db.refresh(settings)
     return settings

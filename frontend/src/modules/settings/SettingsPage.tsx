@@ -149,7 +149,12 @@ export default function SettingsPage() {
         )}
 
         {settings.providers.map((provider) => (
-          <ProviderKeyCard key={provider.id} provider={provider} onChange={setSettings} />
+          <ProviderKeyCard
+            key={provider.id}
+            provider={provider}
+            selectedModel={settings.ai_model}
+            onChange={setSettings}
+          />
         ))}
       </section>
 
