@@ -723,3 +723,25 @@ button:disabled {
 .provider-card .toolbar {
   margin-bottom: 0.3rem;
 }
+
+.instructions-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+.instructions-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.instructions-actions .muted {
+  flex: 1;
+  font-size: 0.85rem;
+}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { ApiError } from '../../services/apiClient'
 import { settingsService } from '../../services/settingsService'
 import type { ExecutionMode, Settings } from '../../types/settings'
+import InstructionsCard from './InstructionsCard'
 import ProviderKeyCard from './ProviderKeyCard'
 
 const MODES: { id: ExecutionMode; label: string; description: string }[] = [
@@ -157,6 +158,8 @@ export default function SettingsPage() {
           />
         ))}
       </section>
+
+      <InstructionsCard settings={settings} onChange={setSettings} />
 
       <section className="panel settings-section">
         <h2>Modo de ejecución</h2>

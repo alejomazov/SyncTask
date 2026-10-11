@@ -182,6 +182,12 @@ export default function ChatPage() {
         <span className="chat-model">
           Modelo: <strong>{modelNames[settings.ai_model] ?? settings.ai_model}</strong>{' '}
           <Link to="/settings">Cambiar</Link>
+          {settings.custom_instructions && (
+            <>
+              {' · '}
+              <Link to="/settings">Instrucciones personalizadas activas</Link>
+            </>
+          )}
         </span>
         <button
           type="button"

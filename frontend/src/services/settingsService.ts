@@ -10,6 +10,11 @@ export const settingsService = {
     }),
   setAiModel: (model: string) =>
     apiFetch<Settings>('/settings', { method: 'PATCH', body: JSON.stringify({ ai_model: model }) }),
+  setCustomInstructions: (instructions: string) =>
+    apiFetch<Settings>('/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ custom_instructions: instructions }),
+    }),
   saveAiKey: (provider: AiProviderId, apiKey: string) =>
     apiFetch<Settings>(`/settings/ai-keys/${provider}`, {
       method: 'PUT',
