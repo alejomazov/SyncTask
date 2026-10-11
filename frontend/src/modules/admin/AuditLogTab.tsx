@@ -23,6 +23,12 @@ const ACTION_LABELS: Record<string, string> = {
   'task.completed': 'Tarea completada',
   'task.reopened': 'Tarea reabierta',
   'task.deleted': 'Tarea eliminada',
+  'ai.key_saved': 'Clave de Claude guardada',
+  'ai.key_removed': 'Clave de Claude eliminada',
+  'ai.action_proposed': 'Acción propuesta por el asistente',
+  'ai.action_rejected': 'Acción del asistente rechazada',
+  'ai.action_discarded': 'Acción del asistente descartada',
+  'settings.updated': 'Configuración actualizada',
 }
 
 const REASON_LABELS: Record<string, string> = {
@@ -48,6 +54,10 @@ function describeDetail(log: AuditLog): string {
   if (typeof log.detail.email === 'string') parts.push(log.detail.email)
   if (typeof log.detail.account_email === 'string') parts.push(log.detail.account_email)
   if (typeof log.detail.title === 'string') parts.push(log.detail.title)
+  if (typeof log.detail.summary === 'string') parts.push(log.detail.summary)
+  if (log.detail.via === 'assistant') parts.push('vía asistente')
+  if (log.detail.execution_mode === 'confirm') parts.push('modo confirmar')
+  if (log.detail.execution_mode === 'automatic') parts.push('modo automático')
   if (typeof log.detail.reason === 'string') {
     parts.push(REASON_LABELS[log.detail.reason] ?? log.detail.reason)
   }
