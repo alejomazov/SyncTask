@@ -33,7 +33,7 @@ backend/
 frontend/
   src/
     routes/        React Router configuration
-    modules/       chat, dashboard, admin
+    modules/       today, dashboard (agenda, inbox, tasks), chat, admin
     services/      HTTP client
     components/    shared components
     types/         shared types
@@ -71,7 +71,7 @@ Each user connects one or more Google accounts from the "Cuentas conectadas" pag
 scopes). Tokens are stored encrypted with AES-256-GCM; events and emails are never stored and
 are read from Google on demand (`/calendar/events`, `/mail/messages`).
 
-The panel shows the latest inbox messages of every connected account, and the assistant can
+The "Bandeja" page shows the latest inbox messages of every connected account, and the assistant can
 list and read them. Accounts connected before the mail permission existed keep their calendar
 and show "Falta permiso de correo" until the user connects them again. Email text is written
 by third parties, so the assistant treats it as data: after it reads mail, every action of that
@@ -89,7 +89,8 @@ Setup in Google Cloud Console:
 
 ## Tasks
 
-The internal task manager lives on the dashboard next to the agenda. Each user creates, edits,
+The internal task manager has its own page ("Tareas"); the "Hoy" page combines today's
+meetings, urgent tasks and unread mail. Each user creates, edits,
 completes, reopens and deletes their own tasks (`/tasks`); every operation is recorded in the
 audit log.
 
