@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+    auth_cookie_name: str = "access_token"
+
+    admin_email: str = ""
+    admin_password: str = ""
+    admin_full_name: str = "Administrator"
     token_encryption_key: str = ""
 
     google_client_id: str = ""
@@ -35,6 +42,10 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env == "production"
 
     @property
     def cors_origins(self) -> list[str]:
