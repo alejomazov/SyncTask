@@ -183,11 +183,11 @@ export default function ChatPage() {
         <h1>Asistente</h1>
         <span className="chat-model">
           Modelo: <strong>{modelNames[settings.ai_model] ?? settings.ai_model}</strong>{' '}
-          <Link to="/settings">Cambiar</Link>
+          <Link to="/settings/ai">Cambiar</Link>
           {settings.custom_instructions && (
             <>
               {' · '}
-              <Link to="/settings">Instrucciones personalizadas activas</Link>
+              <Link to="/settings/ai">Instrucciones personalizadas activas</Link>
             </>
           )}
         </span>
@@ -225,8 +225,8 @@ export default function ChatPage() {
       {!keyConfigured && (
         <p className="notice">
           Para usar el asistente necesitas guardar tu clave de acceso para el modelo elegido.{' '}
-          <Link to="/settings">Ir a Configuración</Link>. El panel y las tareas siguen disponibles
-          sin ella.
+          <Link to="/settings/ai">Ir a Configuración</Link>. El panel y las tareas siguen
+          disponibles sin ella.
         </p>
       )}
 

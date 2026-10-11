@@ -9,6 +9,8 @@ import ConnectionsPage from '../modules/connections/ConnectionsPage'
 import AgendaPage from '../modules/dashboard/AgendaPage'
 import InboxPage from '../modules/dashboard/InboxPage'
 import TasksPage from '../modules/dashboard/TasksPage'
+import AccountSettingsPage from '../modules/settings/AccountSettingsPage'
+import AiSettingsPage from '../modules/settings/AiSettingsPage'
 import SettingsPage from '../modules/settings/SettingsPage'
 import TodayPage from '../modules/today/TodayPage'
 import ProtectedRoute from './ProtectedRoute'
@@ -29,7 +31,15 @@ export const router = createBrowserRouter([
           { path: '/tasks', element: <TasksPage /> },
           { path: '/chat', element: <ChatPage /> },
           { path: '/connections', element: <ConnectionsPage /> },
-          { path: '/settings', element: <SettingsPage /> },
+          {
+            path: '/settings',
+            element: <SettingsPage />,
+            children: [
+              { index: true, element: <Navigate to="/settings/ai" replace /> },
+              { path: 'ai', element: <AiSettingsPage /> },
+              { path: 'account', element: <AccountSettingsPage /> },
+            ],
+          },
           {
             element: <ProtectedRoute role="admin" />,
             children: [{ path: '/admin', element: <AdminPage /> }],

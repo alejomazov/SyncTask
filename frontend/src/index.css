@@ -935,9 +935,90 @@ a:focus-visible {
 
 /* Settings */
 
+.settings-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 720px);
+  gap: 2rem;
+  align-items: start;
+}
+
+.settings-nav {
+  position: sticky;
+  top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.settings-nav a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.settings-nav a .muted {
+  font-size: 0.85rem;
+}
+
+.settings-nav a:hover {
+  background: var(--color-sand);
+}
+
+.settings-nav a.active {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  font-weight: 500;
+}
+
+.settings-nav a.active .muted {
+  font-weight: 400;
+}
+
+@media (max-width: 1000px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .settings-nav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
 .settings-section {
-  max-width: 720px;
   margin-bottom: 1.5rem;
+}
+
+.detail-list {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: 0.7rem 1rem;
+  margin: 0;
+}
+
+.detail-list dt {
+  color: var(--color-muted);
+}
+
+.detail-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.plain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .settings-section code {
