@@ -54,7 +54,7 @@ def chat(
     """Client logged in as Ana, with a Claude key configured."""
     app.dependency_overrides[get_session_factory] = lambda: lambda: contextlib.nullcontext(db)
     login(client, ANA)
-    assert client.put("/settings/ai-key", json={"api_key": VALID_KEY}).status_code == 200
+    assert client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY}).status_code == 200
     yield client
 
 

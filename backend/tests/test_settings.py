@@ -18,12 +18,21 @@ ANA = {"email": "ana@example.com", "password": "supersecret1", "full_name": "Ana
 BEA = {"email": "bea@example.com", "password": "supersecret2", "full_name": "Bea Rojas"}
 VALID_KEY = "sk-ant-valid-key-0000000000001234"
 INVALID_KEY = "sk-ant-invalid-key-000000000009999"
+GEMINI_KEY = "AIzaSy-valid-gemini-key-00000000005678"
 MODELS = [
-    {"id": "claude-fable-5-1", "name": "Claude Fable 5.1"},
-    {"id": "claude-opus-5-5", "name": "Claude Opus 5.5"},
-    {"id": "claude-sonnet-5-5", "name": "Claude Sonnet 5.5"},
-    {"id": "claude-haiku-5-5", "name": "Claude Haiku 5.5"},
+    {"id": "claude-fable-5-1", "name": "Claude Fable 5.1", "provider": "anthropic"},
+    {"id": "claude-opus-5-5", "name": "Claude Opus 5.5", "provider": "anthropic"},
+    {"id": "claude-sonnet-5-5", "name": "Claude Sonnet 5.5", "provider": "anthropic"},
+    {"id": "claude-haiku-5-5", "name": "Claude Haiku 5.5", "provider": "anthropic"},
+    {"id": "gemini-3.1-pro-preview", "name": "Gemini 3.1 Pro (preview)", "provider": "gemini"},
+    {"id": "gemini-3.8-flash", "name": "Gemini 3.8 Flash", "provider": "gemini"},
+    {"id": "gemini-3.5-flash-lite", "name": "Gemini 3.5 Flash-Lite", "provider": "gemini"},
 ]
+
+
+def provider_status(client: TestClient, provider: str) -> dict:
+    providers = client.get("/settings").json()["providers"]
+    return next(item for item in providers if item["id"] == provider)
 
 
 def login(client: TestClient, credentials: dict[str, str]) -> None:
@@ -59,16 +68,30 @@ def audit_actions(db: Session) -> list[str]:
 def test_settings_require_session(client: TestClient) -> None:
     assert client.get("/settings").status_code == 401
     assert client.patch("/settings", json={"execution_mode": "automatic"}).status_code == 401
-    assert client.put("/settings/ai-key", json={"api_key": VALID_KEY}).status_code == 401
-    assert client.delete("/settings/ai-key").status_code == 401
+    assert client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY}).status_code == 401
+    assert client.delete("/settings/ai-keys/anthropic").status_code == 401
 
 
 def test_default_settings(ana_client: TestClient) -> None:
     assert ana_client.get("/settings").json() == {
         "execution_mode": "confirm",
-        "ai_key_configured": False,
-        "ai_key_last4": None,
         "ai_model": "claude-opus-5-5",
+        "ai_provider": "anthropic",
+        "assistant_ready": False,
+        "providers": [
+            {
+                "id": "anthropic",
+                "name": "Claude (Anthropic)",
+                "key_configured": False,
+                "key_last4": None,
+            },
+            {
+                "id": "gemini",
+                "name": "Gemini (Google)",
+                "key_configured": False,
+                "key_last4": None,
+            },
+        ],
         "available_models": MODELS,
     }
 
@@ -104,7 +127,7 @@ def test_key_is_validated_against_the_chosen_model(
 ) -> None:
     ana_client.patch("/settings", json={"ai_model": "claude-haiku-5-5"})
 
-    ana_client.put("/settings/ai-key", json={"api_key": VALID_KEY})
+    ana_client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY})
 
     assert fake_claude.models_checked == ["claude-haiku-5-5"]
 
@@ -112,7 +135,7 @@ def test_key_is_validated_against_the_chosen_model(
 def test_changing_model_checks_the_stored_key_has_access(
     ana_client: TestClient, fake_claude: FakeAnthropic
 ) -> None:
-    ana_client.put("/settings/ai-key", json={"api_key": VALID_KEY})
+    ana_client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY})
 
     assert ana_client.patch("/settings", json={"ai_model": "claude-sonnet-5-5"}).status_code == 200
     assert fake_claude.models_checked == ["claude-opus-5-5", "claude-sonnet-5-5"]
@@ -139,11 +162,16 @@ def test_retired_model_falls_back_to_the_default(ana_client: TestClient, db: Ses
 def test_save_ai_key_validates_and_encrypts(
     ana_client: TestClient, db: Session, fake_claude: FakeAnthropic
 ) -> None:
-    response = ana_client.put("/settings/ai-key", json={"api_key": f"  {VALID_KEY}  "})
+    response = ana_client.put("/settings/ai-keys/anthropic", json={"api_key": f"  {VALID_KEY}  "})
 
     assert response.status_code == 200
-    assert response.json()["ai_key_configured"] is True
-    assert response.json()["ai_key_last4"] == "1234"
+    assert response.json()["assistant_ready"] is True
+    assert provider_status(ana_client, "anthropic") == {
+        "id": "anthropic",
+        "name": "Claude (Anthropic)",
+        "key_configured": True,
+        "key_last4": "1234",
+    }
     assert VALID_KEY not in response.text
     assert VALID_KEY not in ana_client.get("/settings").text
 
@@ -158,19 +186,22 @@ def test_save_ai_key_validates_and_encrypts(
 def test_invalid_ai_key_is_not_stored(
     ana_client: TestClient, db: Session, fake_claude: FakeAnthropic
 ) -> None:
-    response = ana_client.put("/settings/ai-key", json={"api_key": INVALID_KEY})
+    response = ana_client.put("/settings/ai-keys/anthropic", json={"api_key": INVALID_KEY})
 
     assert response.status_code == 422
-    assert ana_client.get("/settings").json()["ai_key_configured"] is False
+    assert provider_status(ana_client, "anthropic")["key_configured"] is False
     assert "ai.key_saved" not in audit_actions(db)
 
 
 def test_invalid_key_does_not_replace_a_valid_one(
     ana_client: TestClient, db: Session, fake_claude: FakeAnthropic
 ) -> None:
-    ana_client.put("/settings/ai-key", json={"api_key": VALID_KEY})
+    ana_client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY})
 
-    assert ana_client.put("/settings/ai-key", json={"api_key": INVALID_KEY}).status_code == 422
+    assert (
+        ana_client.put("/settings/ai-keys/anthropic", json={"api_key": INVALID_KEY}).status_code
+        == 422
+    )
 
     stored = db.scalars(select(UserSettings)).one()
     assert crypto.decrypt(stored.ai_key_encrypted or "") == VALID_KEY
@@ -185,8 +216,11 @@ def test_ai_key_is_not_stored_when_anthropic_is_unreachable(
 ) -> None:
     fake_claude.models_error = error
 
-    assert ana_client.put("/settings/ai-key", json={"api_key": VALID_KEY}).status_code == 503
-    assert ana_client.get("/settings").json()["ai_key_configured"] is False
+    assert (
+        ana_client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY}).status_code
+        == 503
+    )
+    assert provider_status(ana_client, "anthropic")["key_configured"] is False
 
 
 def test_key_without_model_access_is_rejected(
@@ -194,13 +228,18 @@ def test_key_without_model_access_is_rejected(
 ) -> None:
     fake_claude.models_error = api_error(anthropic.PermissionDeniedError, 403)
 
-    assert ana_client.put("/settings/ai-key", json={"api_key": VALID_KEY}).status_code == 422
+    assert (
+        ana_client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY}).status_code
+        == 422
+    )
 
 
 def test_ai_key_format_is_checked_before_calling_anthropic(
     ana_client: TestClient, fake_claude: FakeAnthropic
 ) -> None:
-    assert ana_client.put("/settings/ai-key", json={"api_key": "short"}).status_code == 422
+    assert (
+        ana_client.put("/settings/ai-keys/anthropic", json={"api_key": "short"}).status_code == 422
+    )
     assert fake_claude.keys_used == []
 
 
@@ -209,14 +248,15 @@ def test_replace_and_remove_ai_key(
 ) -> None:
     other_key = "sk-ant-valid-key-0000000000005678"
     fake_claude.valid_keys.add(other_key)
-    ana_client.put("/settings/ai-key", json={"api_key": VALID_KEY})
+    ana_client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY})
 
-    replaced = ana_client.put("/settings/ai-key", json={"api_key": other_key})
-    assert replaced.json()["ai_key_last4"] == "5678"
+    replaced = ana_client.put("/settings/ai-keys/anthropic", json={"api_key": other_key})
+    assert replaced.status_code == 200
+    assert provider_status(ana_client, "anthropic")["key_last4"] == "5678"
 
-    removed = ana_client.delete("/settings/ai-key")
-    assert removed.json()["ai_key_configured"] is False
-    assert removed.json()["ai_key_last4"] is None
+    removed = ana_client.delete("/settings/ai-keys/anthropic")
+    assert removed.json()["assistant_ready"] is False
+    assert provider_status(ana_client, "anthropic")["key_last4"] is None
     assert db.scalars(select(UserSettings)).one().ai_key_encrypted is None
     assert "ai.key_removed" in audit_actions(db)
 
@@ -225,11 +265,11 @@ def test_settings_are_isolated_between_users(
     client: TestClient, ana: User, db: Session, fake_claude: FakeAnthropic
 ) -> None:
     login(client, ANA)
-    client.put("/settings/ai-key", json={"api_key": VALID_KEY})
+    client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY})
     client.patch("/settings", json={"execution_mode": "automatic"})
 
     auth_service.register_user(db, **BEA)
     login(client, BEA)
 
-    assert client.get("/settings").json()["ai_key_configured"] is False
+    assert client.get("/settings").json()["assistant_ready"] is False
     assert client.get("/settings").json()["execution_mode"] == "confirm"
