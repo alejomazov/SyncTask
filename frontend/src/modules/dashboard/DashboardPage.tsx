@@ -1,4 +1,5 @@
 import AgendaPanel from './AgendaPanel'
+import MailPanel from './MailPanel'
 import TasksPanel from './TasksPanel'
 
 export default function DashboardPage() {
@@ -8,6 +9,7 @@ export default function DashboardPage() {
       <div className="dashboard-grid">
         <AgendaPanel />
         <TasksPanel />
+        <MailPanel />
       </div>
     </>
   )

@@ -5,6 +5,8 @@ export interface ConnectedAccount {
   provider: string
   account_email: string
   status: ConnectionStatus
+  /** False when the account was connected without the permission to read mail. */
+  mail_enabled: boolean
   created_at: string
 }
 

@@ -745,3 +745,82 @@ button:disabled {
   flex: 1;
   font-size: 0.85rem;
 }
+
+/* Mail */
+
+.mail-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mail-list li {
+  border-top: 1px solid var(--color-border);
+}
+
+.mail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.55rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  border-radius: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mail-row:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+
+.mail-row .muted {
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mail-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mail-date {
+  flex: none;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mail-unread .mail-sender,
+.mail-unread .mail-subject {
+  font-weight: 600;
+}
+
+.mail-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+.mail-body {
+  padding-bottom: 0.8rem;
+  font-size: 0.9rem;
+}
+
+.mail-body pre {
+  max-height: 22rem;
+  margin: 0.4rem 0;
+  overflow-y: auto;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

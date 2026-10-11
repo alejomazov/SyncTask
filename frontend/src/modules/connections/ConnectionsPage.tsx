@@ -84,8 +84,8 @@ export default function ConnectionsPage() {
     <>
       <h1>Cuentas conectadas</h1>
       <p className="muted">
-        Conecta tus cuentas para ver tu agenda en el panel. SyncTask solo solicita permiso de
-        lectura del calendario y nunca conoce tu contraseña.
+        Conecta tus cuentas para ver tu agenda y tus correos en el panel. SyncTask solo solicita
+        permiso de lectura del calendario y del correo, y nunca conoce tu contraseña.
       </p>
 
       <div className="toolbar">
@@ -128,12 +128,24 @@ export default function ConnectionsPage() {
                   >
                     {STATUS_LABELS[account.status]}
                   </span>
+                  {account.status === 'active' && !account.mail_enabled && (
+                    <>
+                      {' '}
+                      <span className="badge badge-off">Falta permiso de correo</span>
+                    </>
+                  )}
                 </td>
                 <td className="cell-actions">
-                  {account.status === 'needs_reauth' && (
+                  {account.status === 'needs_reauth' ? (
                     <button type="button" disabled={busy} onClick={() => void connectGoogle()}>
                       Reconectar
                     </button>
+                  ) : (
+                    !account.mail_enabled && (
+                      <button type="button" disabled={busy} onClick={() => void connectGoogle()}>
+                        Dar permiso de correo
+                      </button>
+                    )
                   )}{' '}
                   <button
                     type="button"

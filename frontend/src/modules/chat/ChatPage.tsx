@@ -31,6 +31,8 @@ const ERROR_MESSAGES: Record<ChatErrorCode, string> = {
 const STATUS_MESSAGES: Record<string, string> = {
   list_tasks: 'Consultando tus tareas…',
   get_calendar_events: 'Consultando tu agenda…',
+  list_emails: 'Consultando tus correos…',
+  get_email: 'Leyendo el correo…',
 }
 
 function toTurn(interaction: Interaction): Turn {
