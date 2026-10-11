@@ -288,6 +288,16 @@ def test_request_sent_to_gemini(chat: TestClient, fake_gemini: FakeGemini) -> No
         assert schema["required"] == list(schema["properties"])
 
 
+def test_custom_instructions_reach_gemini(chat: TestClient, fake_gemini: FakeGemini) -> None:
+    fake_gemini.script = [reply("Listo")]
+    chat.patch("/settings", json={"custom_instructions": "Lista las tareas por vencimiento."})
+
+    send(chat, "¿Qué tengo pendiente?")
+
+    system = fake_gemini.requests[0]["config"].system_instruction
+    assert "<preferencias_del_usuario>\nLista las tareas por vencimiento.\n" in system
+
+
 def test_read_tool_result_goes_back_with_the_thought_signature(
     chat: TestClient, fake_gemini: FakeGemini
 ) -> None:

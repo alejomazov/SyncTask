@@ -144,6 +144,28 @@ def test_reply_is_streamed_and_stored(
     assert interaction.status == "completed"
 
 
+def test_custom_instructions_are_added_to_the_system_prompt(
+    chat: TestClient, fake_claude: FakeAnthropic
+) -> None:
+    fake_claude.script = [reply("Listo"), reply("Listo"), reply("Listo")]
+
+    send(chat, "Hola")
+    chat.patch("/settings", json={"custom_instructions": "Resume mi agenda agrupada por día."})
+    send(chat, "Hola")
+    chat.patch("/settings", json={"custom_instructions": ""})
+    send(chat, "Hola")
+
+    without, with_instructions, removed = (request["system"] for request in fake_claude.requests)
+    assert "preferencias_del_usuario" not in without
+    assert (
+        "<preferencias_del_usuario>\nResume mi agenda agrupada por día.\n"
+        "</preferencias_del_usuario>" in with_instructions
+    )
+    # The fixed rules stay in place next to the user's preferences.
+    assert "Nunca afirmes que una acción se realizó" in with_instructions
+    assert "preferencias_del_usuario" not in removed
+
+
 def test_request_sent_to_claude(chat: TestClient, fake_claude: FakeAnthropic) -> None:
     fake_claude.script = [reply("Listo")]
 

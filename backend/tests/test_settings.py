@@ -77,6 +77,8 @@ def test_default_settings(ana_client: TestClient) -> None:
         "execution_mode": "confirm",
         "ai_model": "claude-opus-5-5",
         "ai_provider": "anthropic",
+        "custom_instructions": None,
+        "custom_instructions_max_length": 2000,
         "assistant_ready": False,
         "providers": [
             {
@@ -261,15 +263,56 @@ def test_replace_and_remove_ai_key(
     assert "ai.key_removed" in audit_actions(db)
 
 
+def test_save_and_remove_custom_instructions(ana_client: TestClient, db: Session) -> None:
+    text = "Resume mi agenda agrupada por día y trátame de tú."
+
+    response = ana_client.patch("/settings", json={"custom_instructions": f"  {text}\n"})
+
+    assert response.status_code == 200
+    assert response.json()["custom_instructions"] == text
+    assert ana_client.get("/settings").json()["custom_instructions"] == text
+
+    # Updating another setting leaves the instructions untouched.
+    ana_client.patch("/settings", json={"execution_mode": "automatic"})
+    assert ana_client.get("/settings").json()["custom_instructions"] == text
+
+    assert ana_client.patch("/settings", json={"custom_instructions": ""}).status_code == 200
+    assert ana_client.get("/settings").json()["custom_instructions"] is None
+    assert db.scalars(select(UserSettings)).one().custom_instructions is None
+
+
+def test_custom_instructions_have_a_length_limit(ana_client: TestClient) -> None:
+    assert (
+        ana_client.patch("/settings", json={"custom_instructions": "a" * 2000}).status_code == 200
+    )
+    assert (
+        ana_client.patch("/settings", json={"custom_instructions": "a" * 2001}).status_code == 422
+    )
+    assert len(ana_client.get("/settings").json()["custom_instructions"]) == 2000
+
+
+def test_custom_instructions_text_is_kept_out_of_the_audit_trail(
+    ana_client: TestClient, db: Session
+) -> None:
+    ana_client.patch("/settings", json={"custom_instructions": "Háblame de usted."})
+    ana_client.patch("/settings", json={"custom_instructions": "Háblame de usted."})
+    ana_client.patch("/settings", json={"custom_instructions": ""})
+
+    logs = db.scalars(select(AuditLog).where(AuditLog.action == "settings.updated")).all()
+    assert sorted(log.detail["custom_instructions"] for log in logs) == ["removed", "updated"]
+
+
 def test_settings_are_isolated_between_users(
     client: TestClient, ana: User, db: Session, fake_claude: FakeAnthropic
 ) -> None:
     login(client, ANA)
     client.put("/settings/ai-keys/anthropic", json={"api_key": VALID_KEY})
     client.patch("/settings", json={"execution_mode": "automatic"})
+    client.patch("/settings", json={"custom_instructions": "Responde en inglés."})
 
     auth_service.register_user(db, **BEA)
     login(client, BEA)
 
+    assert client.get("/settings").json()["custom_instructions"] is None
     assert client.get("/settings").json()["assistant_ready"] is False
     assert client.get("/settings").json()["execution_mode"] == "confirm"
