@@ -1,0 +1,10 @@
+from enum import StrEnum
+
+
+class AuditAction(StrEnum):
+    AUTH_REGISTER = "auth.register"
+    AUTH_LOGIN = "auth.login"
+    AUTH_LOGIN_FAILED = "auth.login_failed"
+    AUTH_LOGOUT = "auth.logout"
+    ADMIN_USER_ENABLED = "admin.user_enabled"
+    ADMIN_USER_DISABLED = "admin.user_disabled"
