@@ -19,12 +19,13 @@ interface Turn {
 }
 
 const ERROR_MESSAGES: Record<ChatErrorCode, string> = {
-  invalid_key: 'Anthropic rechazó tu clave. Revísala en Configuración.',
+  invalid_key: 'El proveedor del modelo rechazó tu clave. Revísala en Configuración.',
   key_without_access: 'Tu clave no tiene acceso al modelo. Revísala en Configuración.',
-  rate_limited: 'Se alcanzó el límite de uso de tu cuenta de Anthropic. Inténtalo en unos minutos.',
+  rate_limited:
+    'Se alcanzó el límite de uso de tu cuenta con el proveedor del modelo. Inténtalo en unos minutos.',
   provider_rejected:
-    'Anthropic no aceptó la solicitud. Revisa el estado y el saldo de tu cuenta de Anthropic.',
-  provider_unavailable: 'El servicio de Claude no está disponible en este momento.',
+    'El proveedor del modelo no aceptó la solicitud. Revisa el estado y el saldo de tu cuenta.',
+  provider_unavailable: 'El servicio del modelo no está disponible en este momento.',
 }
 
 const STATUS_MESSAGES: Record<string, string> = {
@@ -169,7 +170,7 @@ export default function ChatPage() {
     )
   }
 
-  const keyConfigured = settings.ai_key_configured
+  const keyConfigured = settings.assistant_ready
   const modelNames = Object.fromEntries(
     settings.available_models.map((model) => [model.id, model.name]),
   )
@@ -215,7 +216,7 @@ export default function ChatPage() {
 
       {!keyConfigured && (
         <p className="notice">
-          Para usar el asistente necesitas conectar el modelo de IA con tu clave de Claude.{' '}
+          Para usar el asistente necesitas guardar tu clave de acceso para el modelo elegido.{' '}
           <Link to="/settings">Ir a Configuración</Link>. El panel y las tareas siguen disponibles
           sin ella.
         </p>

@@ -23,8 +23,8 @@ const ACTION_LABELS: Record<string, string> = {
   'task.completed': 'Tarea completada',
   'task.reopened': 'Tarea reabierta',
   'task.deleted': 'Tarea eliminada',
-  'ai.key_saved': 'Clave de Claude guardada',
-  'ai.key_removed': 'Clave de Claude eliminada',
+  'ai.key_saved': 'Clave de IA guardada',
+  'ai.key_removed': 'Clave de IA eliminada',
   'ai.action_proposed': 'Acción propuesta por el asistente',
   'ai.action_rejected': 'Acción del asistente rechazada',
   'ai.action_discarded': 'Acción del asistente descartada',
@@ -56,6 +56,8 @@ function describeDetail(log: AuditLog): string {
   if (typeof log.detail.title === 'string') parts.push(log.detail.title)
   if (typeof log.detail.summary === 'string') parts.push(log.detail.summary)
   if (log.detail.via === 'assistant') parts.push('vía asistente')
+  if (log.detail.provider === 'anthropic') parts.push('Claude')
+  if (log.detail.provider === 'gemini') parts.push('Gemini')
   if (typeof log.detail.ai_model === 'string') parts.push(`modelo ${log.detail.ai_model}`)
   if (log.detail.execution_mode === 'confirm') parts.push('modo confirmar')
   if (log.detail.execution_mode === 'automatic') parts.push('modo automático')

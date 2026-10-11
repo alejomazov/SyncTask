@@ -12,7 +12,7 @@ Three-layer client-server architecture plus an external services layer.
 | Presentation      | React 18, TypeScript, React Router, Vite                |
 | Business          | Python 3.12, FastAPI (MVC), Celery + Redis              |
 | Persistence       | PostgreSQL 16, SQLAlchemy, Alembic                      |
-| External services | Google Calendar, Gmail, Microsoft Graph, Claude (Anthropic) |
+| External services | Google Calendar, Gmail, Microsoft Graph, Claude, Gemini      |
 
 ## Project structure
 
@@ -26,7 +26,7 @@ backend/
     controllers/   API routers (Controller)
     services/      business logic
     modules/       auth, audit, ai
-    integrations/  google, microsoft, anthropic
+    integrations/  google, microsoft, llm, anthropic, gemini
     worker/        Celery app and tasks
   alembic/         database migrations
   tests/
@@ -88,9 +88,12 @@ audit log.
 
 ## Assistant chat
 
-Each user connects Claude with their own Anthropic API key from "Configuración"; the key is
-verified with Anthropic and stored encrypted with AES-256-GCM. The chat uses the official
-`anthropic` SDK with the model the user chooses (Claude Opus 5.5 by default) and streams replies as Server-Sent Events.
+Each user chooses the model of the assistant in "Configuración" and stores their own API key
+for its provider: Claude (Anthropic, official `anthropic` SDK) or Gemini (Google, official
+`google-genai` SDK). Keys are verified with the provider and stored encrypted with
+AES-256-GCM. Both providers sit behind a common session interface
+(`app/integrations/llm`), so the assistant logic is the same for either. Replies are streamed
+as Server-Sent Events.
 
 The model never changes data directly: it proposes actions through strict tools (list, create,
 edit, complete and delete tasks; read the calendar). Every proposed action is validated against

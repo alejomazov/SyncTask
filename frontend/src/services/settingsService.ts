@@ -1,4 +1,4 @@
-import type { ExecutionMode, Settings } from '../types/settings'
+import type { AiProviderId, ExecutionMode, Settings } from '../types/settings'
 import { apiFetch } from './apiClient'
 
 export const settingsService = {
@@ -10,10 +10,11 @@ export const settingsService = {
     }),
   setAiModel: (model: string) =>
     apiFetch<Settings>('/settings', { method: 'PATCH', body: JSON.stringify({ ai_model: model }) }),
-  saveAiKey: (apiKey: string) =>
-    apiFetch<Settings>('/settings/ai-key', {
+  saveAiKey: (provider: AiProviderId, apiKey: string) =>
+    apiFetch<Settings>(`/settings/ai-keys/${provider}`, {
       method: 'PUT',
       body: JSON.stringify({ api_key: apiKey }),
     }),
-  removeAiKey: () => apiFetch<Settings>('/settings/ai-key', { method: 'DELETE' }),
+  removeAiKey: (provider: AiProviderId) =>
+    apiFetch<Settings>(`/settings/ai-keys/${provider}`, { method: 'DELETE' }),
 }

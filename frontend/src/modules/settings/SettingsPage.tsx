@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ApiError } from '../../services/apiClient'
 import { settingsService } from '../../services/settingsService'
 import type { ExecutionMode, Settings } from '../../types/settings'
+import ProviderKeyCard from './ProviderKeyCard'
 
 const MODES: { id: ExecutionMode; label: string; description: string }[] = [
   {
@@ -21,20 +22,23 @@ const MODES: { id: ExecutionMode; label: string; description: string }[] = [
 /** Guidance shown under the model selector, by model id. */
 const MODEL_HINTS: Record<string, string> = {
   'claude-fable-5-1': 'El más capaz y el de mayor costo; sus respuestas pueden tardar más.',
-  'claude-opus-5-5': 'Recomendado: alta capacidad para interpretar instrucciones complejas.',
+  'claude-opus-5-5': 'Alta capacidad para interpretar instrucciones complejas.',
   'claude-sonnet-5-5': 'Equilibrio entre rapidez, capacidad y costo para el uso diario.',
-  'claude-haiku-5-5': 'El más rápido y económico; adecuado para instrucciones simples.',
+  'claude-haiku-5-5': 'El más rápido y económico de Claude; adecuado para instrucciones simples.',
+  'gemini-3.1-pro-preview':
+    'El más capaz de Gemini. Está en vista previa: Google puede cambiarlo o retirarlo.',
+  'gemini-3.8-flash': 'El modelo Flash más reciente de Gemini, rápido y de uso general.',
+  'gemini-3.5-flash-lite':
+    'El más rápido y económico de Gemini; adecuado para instrucciones simples.',
 }
 
 type Message = { text: string; ok: boolean }
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [apiKey, setApiKey] = useState('')
-  const [keyMessage, setKeyMessage] = useState<Message | null>(null)
   const [modeMessage, setModeMessage] = useState<Message | null>(null)
   const [modelMessage, setModelMessage] = useState<Message | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [changingModel, setChangingModel] = useState(false)
   const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
@@ -44,46 +48,8 @@ export default function SettingsPage() {
       .catch(() => setLoadFailed(true))
   }, [])
 
-  async function saveKey(event: FormEvent) {
-    event.preventDefault()
-    setBusy(true)
-    setKeyMessage(null)
-    try {
-      setSettings(await settingsService.saveAiKey(apiKey))
-      setApiKey('')
-      setKeyMessage({ text: 'La clave se verificó y quedó guardada.', ok: true })
-    } catch (err) {
-      const status = err instanceof ApiError ? err.status : 0
-      setKeyMessage({
-        text:
-          status === 422
-            ? 'Anthropic rechazó la clave. Revisa que esté completa y vigente; no se guardó.'
-            : status === 503
-              ? 'No se pudo verificar la clave con Anthropic en este momento. Inténtalo más tarde.'
-              : 'No se pudo guardar la clave.',
-        ok: false,
-      })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function removeKey() {
-    if (!window.confirm('¿Seguro que quieres eliminar tu clave? El asistente dejará de funcionar.'))
-      return
-    setBusy(true)
-    try {
-      setSettings(await settingsService.removeAiKey())
-      setKeyMessage({ text: 'La clave se eliminó.', ok: true })
-    } catch {
-      setKeyMessage({ text: 'No se pudo eliminar la clave.', ok: false })
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function changeModel(model: string) {
-    setBusy(true)
+    setChangingModel(true)
     setModelMessage(null)
     try {
       setSettings(await settingsService.setAiModel(model))
@@ -95,12 +61,12 @@ export default function SettingsPage() {
           status === 422
             ? 'Tu clave no tiene acceso a ese modelo; se conserva el modelo anterior.'
             : status === 503
-              ? 'No se pudo verificar el modelo con Anthropic en este momento. Inténtalo más tarde.'
+              ? 'No se pudo verificar el modelo en este momento. Inténtalo más tarde.'
               : 'No se pudo cambiar el modelo.',
         ok: false,
       })
     } finally {
-      setBusy(false)
+      setChangingModel(false)
     }
   }
 
@@ -125,36 +91,53 @@ export default function SettingsPage() {
     return <p className="page-loading">Cargando…</p>
   }
 
+  const selectedProvider = settings.providers.find((item) => item.id === settings.ai_provider)
+
   return (
     <>
       <h1>Configuración</h1>
 
       <section className="panel settings-section">
-        <h2>Modelo de IA (Claude)</h2>
+        <h2>Modelo de IA</h2>
         <p className="muted">
-          El asistente usa un modelo Claude, de Anthropic, con tu propia clave de acceso a la API.
-          La clave se guarda cifrada y el uso se factura en tu cuenta de Anthropic, según el modelo
-          que elijas.
+          El asistente puede usar modelos de Claude (Anthropic) o de Gemini (Google), con tu propia
+          clave de acceso a la API de cada proveedor. Las claves se guardan cifradas y el uso se
+          factura en tu cuenta del proveedor, según el modelo que elijas.
         </p>
 
         <div className="toolbar">
           <label>
-            Modelo
+            Modelo del asistente
             <select
               value={settings.ai_model}
-              disabled={busy}
+              disabled={changingModel}
               onChange={(e) => void changeModel(e.target.value)}
             >
-              {settings.available_models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
+              {settings.providers.map((provider) => (
+                <optgroup
+                  key={provider.id}
+                  label={provider.key_configured ? provider.name : `${provider.name} (sin clave)`}
+                >
+                  {settings.available_models
+                    .filter((model) => model.provider === provider.id)
+                    .map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                </optgroup>
               ))}
             </select>
           </label>
         </div>
         {MODEL_HINTS[settings.ai_model] && (
           <p className="form-hint">{MODEL_HINTS[settings.ai_model]}</p>
+        )}
+        {!settings.assistant_ready && selectedProvider && (
+          <p className="form-error" role="alert">
+            El modelo elegido es de {selectedProvider.name} y aún no has guardado esa clave: el
+            asistente no funcionará hasta que la agregues o elijas un modelo de otro proveedor.
+          </p>
         )}
         {modelMessage && (
           <p
@@ -165,52 +148,9 @@ export default function SettingsPage() {
           </p>
         )}
 
-        <p>
-          {settings.ai_key_configured ? (
-            <>
-              <span className="badge badge-ok">Clave configurada</span> termina en{' '}
-              <code>…{settings.ai_key_last4}</code>
-            </>
-          ) : (
-            <span className="badge badge-off">Sin clave</span>
-          )}
-        </p>
-
-        <form className="toolbar" onSubmit={saveKey}>
-          <label>
-            {settings.ai_key_configured ? 'Reemplazar clave' : 'Clave de la API de Anthropic'}
-            <input
-              type="password"
-              autoComplete="off"
-              placeholder="sk-ant-…"
-              required
-              minLength={20}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-          </label>
-          <button type="submit" disabled={busy}>
-            {busy ? 'Verificando…' : 'Guardar clave'}
-          </button>
-          {settings.ai_key_configured && (
-            <button
-              type="button"
-              className="button-secondary"
-              disabled={busy}
-              onClick={() => void removeKey()}
-            >
-              Eliminar clave
-            </button>
-          )}
-        </form>
-        {keyMessage && (
-          <p
-            className={keyMessage.ok ? 'form-success' : 'form-error'}
-            role={keyMessage.ok ? 'status' : 'alert'}
-          >
-            {keyMessage.text}
-          </p>
-        )}
+        {settings.providers.map((provider) => (
+          <ProviderKeyCard key={provider.id} provider={provider} onChange={setSettings} />
+        ))}
       </section>
 
       <section className="panel settings-section">
