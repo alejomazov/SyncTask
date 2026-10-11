@@ -38,13 +38,15 @@ def admin_client(client: TestClient, admin: User) -> TestClient:
     [
         ("get", "/admin/users"),
         ("get", "/admin/audit-logs"),
+        ("post", "/admin/users"),
         ("patch", "/admin/users/00000000-0000-0000-0000-000000000000"),
     ],
 )
 def test_admin_routes_reject_anonymous_and_regular_users(
     client: TestClient, user: User, method: str, path: str
 ) -> None:
-    kwargs = {"json": {"is_active": False}} if method == "patch" else {}
+    bodies = {"patch": {"is_active": False}, "post": USER}
+    kwargs = {"json": bodies[method]} if method in bodies else {}
 
     assert client.request(method, path, **kwargs).status_code == 401
 
@@ -69,6 +71,41 @@ def test_list_users_search_and_pagination(admin_client: TestClient, user: User) 
     paged = admin_client.get("/admin/users", params={"page_size": 1, "page": 2}).json()
     assert paged["total"] == 2
     assert len(paged["items"]) == 1
+
+
+def test_create_user(admin_client: TestClient) -> None:
+    response = admin_client.post("/admin/users", json=USER)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["email"] == USER["email"]
+    assert body["role"] == "user"
+    assert body["is_active"] is True
+    # Creating an account must not replace the administrator's session.
+    assert admin_client.get("/auth/me").json()["email"] == ADMIN["email"]
+
+    created = admin_client.get("/admin/audit-logs", params={"action": "admin.user_created"}).json()
+    assert created["total"] == 1
+    assert created["items"][0]["actor_email"] == ADMIN["email"]
+    assert created["items"][0]["detail"] == {"email": USER["email"]}
+
+    login(admin_client, USER)
+
+
+def test_create_user_ignores_role_in_payload(admin_client: TestClient) -> None:
+    response = admin_client.post("/admin/users", json={**USER, "role": "admin"})
+
+    assert response.json()["role"] == "user"
+
+
+def test_create_user_rejects_duplicate_email(admin_client: TestClient, user: User) -> None:
+    assert admin_client.post("/admin/users", json=USER).status_code == 409
+
+
+def test_create_user_rejects_short_password(admin_client: TestClient) -> None:
+    response = admin_client.post("/admin/users", json={**USER, "password": "short"})
+
+    assert response.status_code == 422
 
 
 def test_disable_and_enable_user(admin_client: TestClient, user: User) -> None:

@@ -9,9 +9,10 @@ from app.db.session import get_db
 from app.models.user import User
 from app.modules.audit import service as audit
 from app.modules.audit.actions import AuditAction
+from app.modules.auth import service as auth_service
 from app.modules.auth.dependencies import AdminUser, require_admin
 from app.schemas.admin import AuditLogRead, UserStatusUpdate
-from app.schemas.auth import UserRead
+from app.schemas.auth import UserCreate, UserRead
 from app.schemas.common import Page
 from app.services import users
 
@@ -31,6 +32,28 @@ def list_users(
 ) -> dict:
     items, total = users.list_users(db, search=search, page=page, page_size=page_size)
     return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+@router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+def create_user(payload: UserCreate, request: Request, db: DbSession, admin: AdminUser) -> User:
+    """Create a regular (non-admin) account on behalf of a test user."""
+    try:
+        user = auth_service.register_user(
+            db, email=payload.email, password=payload.password, full_name=payload.full_name
+        )
+    except auth_service.EmailAlreadyRegisteredError:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
+
+    audit.record(
+        db,
+        AuditAction.ADMIN_USER_CREATED,
+        actor_id=admin.id,
+        target_type="user",
+        target_id=user.id,
+        detail={"email": user.email},
+        ip_address=request.client.host if request.client else None,
+    )
+    return user
 
 
 @router.patch("/users/{user_id}", response_model=UserRead)
