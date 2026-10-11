@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     app_name: str = "SyncTask"
     app_env: str = "development"
     backend_cors_origins: str = "http://localhost:5173"
+    frontend_url: str = "http://localhost:5173"
 
     postgres_user: str = "synctask"
     postgres_password: str = ""
@@ -31,6 +32,7 @@ class Settings(BaseSettings):
 
     google_client_id: str = ""
     google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/integrations/google/callback"
     microsoft_client_id: str = ""
     microsoft_client_secret: str = ""
     gemini_api_key: str = ""
