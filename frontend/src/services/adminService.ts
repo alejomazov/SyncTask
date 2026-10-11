@@ -1,4 +1,5 @@
 import type { AuditLog, Page } from '../types/admin'
+import type { AdminConnection } from '../types/connections'
 import type { User } from '../types/user'
 import { apiFetch } from './apiClient'
 
@@ -42,6 +43,8 @@ export const adminService = {
       method: 'PATCH',
       body: JSON.stringify({ is_active: isActive }),
     }),
+  listConnections: (params: { page?: number; page_size?: number } = {}) =>
+    apiFetch<Page<AdminConnection>>(`/admin/connections${toQuery(params)}`),
   listAuditLogs: (params: AuditLogParams = {}) =>
     apiFetch<Page<AuditLog>>(`/admin/audit-logs${toQuery(params)}`),
 }
