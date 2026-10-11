@@ -6,6 +6,7 @@ from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.integrations.anthropic.client import DEFAULT_MODEL
 
 
 class ExecutionMode(StrEnum):
@@ -20,6 +21,9 @@ class UserSettings(Base):
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     execution_mode: Mapped[str] = mapped_column(String(20), default=ExecutionMode.CONFIRM.value)
+    ai_model: Mapped[str] = mapped_column(
+        String(64), default=DEFAULT_MODEL, server_default=DEFAULT_MODEL
+    )
     ai_key_encrypted: Mapped[str | None] = mapped_column(Text)
     # Shown in the UI so the user can recognise which key is stored.
     ai_key_last4: Mapped[str | None] = mapped_column(String(4))

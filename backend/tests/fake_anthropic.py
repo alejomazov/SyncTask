@@ -68,6 +68,7 @@ class FakeAnthropic:
         self.script: list[SimpleNamespace | Exception] = []
         self.requests: list[dict[str, Any]] = []
         self.keys_used: list[str] = []
+        self.models_checked: list[str] = []
         self.messages = SimpleNamespace(stream=self._stream)
         self.models = SimpleNamespace(retrieve=self._retrieve)
         self._key = ""
@@ -78,6 +79,7 @@ class FakeAnthropic:
         return self
 
     def _retrieve(self, model: str) -> SimpleNamespace:
+        self.models_checked.append(model)
         if self.models_error is not None:
             raise self.models_error
         if self._key not in self.valid_keys:

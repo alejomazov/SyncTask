@@ -235,7 +235,7 @@ def run_instruction(
         for _ in range(MAX_ITERATIONS):
             started_text = False
             with client.messages.stream(
-                model=anthropic_client.MODEL,
+                model=anthropic_client.resolve_model(settings.ai_model),
                 max_tokens=MAX_TOKENS,
                 system=system,
                 tools=tools.TOOLS,

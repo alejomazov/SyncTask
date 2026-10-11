@@ -166,6 +166,17 @@ def test_request_sent_to_claude(chat: TestClient, fake_claude: FakeAnthropic) ->
     assert "temperature" not in request
 
 
+def test_chat_uses_the_model_chosen_by_the_user(
+    chat: TestClient, fake_claude: FakeAnthropic
+) -> None:
+    assert chat.patch("/settings", json={"ai_model": "claude-haiku-5-5"}).status_code == 200
+    fake_claude.script = [reply("", [("list_tasks", {"status": "all"})]), reply("Listo")]
+
+    send(chat, "Hola")
+
+    assert [request["model"] for request in fake_claude.requests] == ["claude-haiku-5-5"] * 2
+
+
 def test_unknown_timezone_falls_back_to_utc(chat: TestClient, fake_claude: FakeAnthropic) -> None:
     fake_claude.script = [reply("Listo")]
 

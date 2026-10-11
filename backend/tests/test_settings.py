@@ -18,6 +18,12 @@ ANA = {"email": "ana@example.com", "password": "supersecret1", "full_name": "Ana
 BEA = {"email": "bea@example.com", "password": "supersecret2", "full_name": "Bea Rojas"}
 VALID_KEY = "sk-ant-valid-key-0000000000001234"
 INVALID_KEY = "sk-ant-invalid-key-000000000009999"
+MODELS = [
+    {"id": "claude-fable-5-1", "name": "Claude Fable 5.1"},
+    {"id": "claude-opus-5-5", "name": "Claude Opus 5.5"},
+    {"id": "claude-sonnet-5-5", "name": "Claude Sonnet 5.5"},
+    {"id": "claude-haiku-5-5", "name": "Claude Haiku 5.5"},
+]
 
 
 def login(client: TestClient, credentials: dict[str, str]) -> None:
@@ -63,6 +69,7 @@ def test_default_settings(ana_client: TestClient) -> None:
         "ai_key_configured": False,
         "ai_key_last4": None,
         "ai_model": "claude-opus-5-5",
+        "available_models": MODELS,
     }
 
 
@@ -72,6 +79,61 @@ def test_update_execution_mode(ana_client: TestClient) -> None:
     assert response.json()["execution_mode"] == "automatic"
     assert ana_client.get("/settings").json()["execution_mode"] == "automatic"
     assert ana_client.patch("/settings", json={"execution_mode": "yolo"}).status_code == 422
+
+
+def test_choose_ai_model(ana_client: TestClient, db: Session, fake_claude: FakeAnthropic) -> None:
+    response = ana_client.patch("/settings", json={"ai_model": "claude-sonnet-5-5"})
+
+    assert response.status_code == 200
+    assert response.json()["ai_model"] == "claude-sonnet-5-5"
+    assert response.json()["execution_mode"] == "confirm"
+    assert ana_client.get("/settings").json()["ai_model"] == "claude-sonnet-5-5"
+    # Without a stored key there is nothing to check against Anthropic.
+    assert fake_claude.models_checked == []
+    updated = db.scalars(select(AuditLog).where(AuditLog.action == "settings.updated")).one()
+    assert updated.detail == {"ai_model": "claude-sonnet-5-5"}
+
+
+def test_unknown_ai_model_is_rejected(ana_client: TestClient) -> None:
+    assert ana_client.patch("/settings", json={"ai_model": "gpt-4"}).status_code == 422
+    assert ana_client.get("/settings").json()["ai_model"] == "claude-opus-5-5"
+
+
+def test_key_is_validated_against_the_chosen_model(
+    ana_client: TestClient, fake_claude: FakeAnthropic
+) -> None:
+    ana_client.patch("/settings", json={"ai_model": "claude-haiku-5-5"})
+
+    ana_client.put("/settings/ai-key", json={"api_key": VALID_KEY})
+
+    assert fake_claude.models_checked == ["claude-haiku-5-5"]
+
+
+def test_changing_model_checks_the_stored_key_has_access(
+    ana_client: TestClient, fake_claude: FakeAnthropic
+) -> None:
+    ana_client.put("/settings/ai-key", json={"api_key": VALID_KEY})
+
+    assert ana_client.patch("/settings", json={"ai_model": "claude-sonnet-5-5"}).status_code == 200
+    assert fake_claude.models_checked == ["claude-opus-5-5", "claude-sonnet-5-5"]
+
+    fake_claude.models_error = api_error(anthropic.PermissionDeniedError, 403)
+    denied = ana_client.patch("/settings", json={"ai_model": "claude-fable-5-1"})
+    assert denied.status_code == 422
+    assert ana_client.get("/settings").json()["ai_model"] == "claude-sonnet-5-5"
+
+    fake_claude.models_error = connection_error()
+    assert ana_client.patch("/settings", json={"ai_model": "claude-fable-5-1"}).status_code == 503
+    assert ana_client.get("/settings").json()["ai_model"] == "claude-sonnet-5-5"
+
+
+def test_retired_model_falls_back_to_the_default(ana_client: TestClient, db: Session) -> None:
+    ana_client.get("/settings")
+    stored = db.scalars(select(UserSettings)).one()
+    stored.ai_model = "claude-retired-1"
+    db.commit()
+
+    assert ana_client.get("/settings").json()["ai_model"] == "claude-opus-5-5"
 
 
 def test_save_ai_key_validates_and_encrypts(
@@ -153,12 +215,8 @@ def test_replace_and_remove_ai_key(
     assert replaced.json()["ai_key_last4"] == "5678"
 
     removed = ana_client.delete("/settings/ai-key")
-    assert removed.json() == {
-        "execution_mode": "confirm",
-        "ai_key_configured": False,
-        "ai_key_last4": None,
-        "ai_model": "claude-opus-5-5",
-    }
+    assert removed.json()["ai_key_configured"] is False
+    assert removed.json()["ai_key_last4"] is None
     assert db.scalars(select(UserSettings)).one().ai_key_encrypted is None
     assert "ai.key_removed" in audit_actions(db)
 

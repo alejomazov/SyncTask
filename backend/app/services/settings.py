@@ -26,9 +26,24 @@ def set_execution_mode(db: Session, settings: UserSettings, mode: ExecutionMode)
     return settings
 
 
+def get_ai_model(settings: UserSettings) -> str:
+    return anthropic_client.resolve_model(settings.ai_model)
+
+
+def set_ai_model(db: Session, settings: UserSettings, model: str) -> UserSettings:
+    """Change the assistant's model. With a key stored, the key must have access to it."""
+    api_key = get_ai_key(settings)
+    if api_key is not None:
+        anthropic_client.validate_api_key(api_key, model)
+    settings.ai_model = model
+    db.commit()
+    db.refresh(settings)
+    return settings
+
+
 def save_ai_key(db: Session, settings: UserSettings, api_key: str) -> UserSettings:
     """Validate the key with Anthropic and store it encrypted. Nothing is stored if it fails."""
-    anthropic_client.validate_api_key(api_key)
+    anthropic_client.validate_api_key(api_key, get_ai_model(settings))
     settings.ai_key_encrypted = crypto.encrypt(api_key)
     settings.ai_key_last4 = api_key[-4:]
     db.commit()
