@@ -18,6 +18,14 @@ const MODES: { id: ExecutionMode; label: string; description: string }[] = [
   },
 ]
 
+/** Guidance shown under the model selector, by model id. */
+const MODEL_HINTS: Record<string, string> = {
+  'claude-fable-5-1': 'El más capaz y el de mayor costo; sus respuestas pueden tardar más.',
+  'claude-opus-5-5': 'Recomendado: alta capacidad para interpretar instrucciones complejas.',
+  'claude-sonnet-5-5': 'Equilibrio entre rapidez, capacidad y costo para el uso diario.',
+  'claude-haiku-5-5': 'El más rápido y económico; adecuado para instrucciones simples.',
+}
+
 type Message = { text: string; ok: boolean }
 
 export default function SettingsPage() {
@@ -25,6 +33,7 @@ export default function SettingsPage() {
   const [apiKey, setApiKey] = useState('')
   const [keyMessage, setKeyMessage] = useState<Message | null>(null)
   const [modeMessage, setModeMessage] = useState<Message | null>(null)
+  const [modelMessage, setModelMessage] = useState<Message | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadFailed, setLoadFailed] = useState(false)
 
@@ -73,6 +82,28 @@ export default function SettingsPage() {
     }
   }
 
+  async function changeModel(model: string) {
+    setBusy(true)
+    setModelMessage(null)
+    try {
+      setSettings(await settingsService.setAiModel(model))
+      setModelMessage({ text: 'Modelo actualizado.', ok: true })
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0
+      setModelMessage({
+        text:
+          status === 422
+            ? 'Tu clave no tiene acceso a ese modelo; se conserva el modelo anterior.'
+            : status === 503
+              ? 'No se pudo verificar el modelo con Anthropic en este momento. Inténtalo más tarde.'
+              : 'No se pudo cambiar el modelo.',
+        ok: false,
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function changeMode(mode: ExecutionMode) {
     setModeMessage(null)
     try {
@@ -101,9 +132,39 @@ export default function SettingsPage() {
       <section className="panel settings-section">
         <h2>Modelo de IA (Claude)</h2>
         <p className="muted">
-          El asistente usa el modelo {settings.ai_model} de Anthropic con tu propia clave de acceso
-          a la API. La clave se guarda cifrada y el uso se factura en tu cuenta de Anthropic.
+          El asistente usa un modelo Claude, de Anthropic, con tu propia clave de acceso a la API.
+          La clave se guarda cifrada y el uso se factura en tu cuenta de Anthropic, según el modelo
+          que elijas.
         </p>
+
+        <div className="toolbar">
+          <label>
+            Modelo
+            <select
+              value={settings.ai_model}
+              disabled={busy}
+              onChange={(e) => void changeModel(e.target.value)}
+            >
+              {settings.available_models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {MODEL_HINTS[settings.ai_model] && (
+          <p className="form-hint">{MODEL_HINTS[settings.ai_model]}</p>
+        )}
+        {modelMessage && (
+          <p
+            className={modelMessage.ok ? 'form-success' : 'form-error'}
+            role={modelMessage.ok ? 'status' : 'alert'}
+          >
+            {modelMessage.text}
+          </p>
+        )}
+
         <p>
           {settings.ai_key_configured ? (
             <>

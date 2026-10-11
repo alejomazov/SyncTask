@@ -8,6 +8,8 @@ export const settingsService = {
       method: 'PATCH',
       body: JSON.stringify({ execution_mode: mode }),
     }),
+  setAiModel: (model: string) =>
+    apiFetch<Settings>('/settings', { method: 'PATCH', body: JSON.stringify({ ai_model: model }) }),
   saveAiKey: (apiKey: string) =>
     apiFetch<Settings>('/settings/ai-key', {
       method: 'PUT',

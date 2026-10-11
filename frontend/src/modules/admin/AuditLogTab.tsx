@@ -56,6 +56,7 @@ function describeDetail(log: AuditLog): string {
   if (typeof log.detail.title === 'string') parts.push(log.detail.title)
   if (typeof log.detail.summary === 'string') parts.push(log.detail.summary)
   if (log.detail.via === 'assistant') parts.push('vía asistente')
+  if (typeof log.detail.ai_model === 'string') parts.push(`modelo ${log.detail.ai_model}`)
   if (log.detail.execution_mode === 'confirm') parts.push('modo confirmar')
   if (log.detail.execution_mode === 'automatic') parts.push('modo automático')
   if (typeof log.detail.reason === 'string') {

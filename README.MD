@@ -90,7 +90,7 @@ audit log.
 
 Each user connects Claude with their own Anthropic API key from "Configuración"; the key is
 verified with Anthropic and stored encrypted with AES-256-GCM. The chat uses the official
-`anthropic` SDK (`claude-opus-5-5`) and streams replies as Server-Sent Events.
+`anthropic` SDK with the model the user chooses (Claude Opus 5.5 by default) and streams replies as Server-Sent Events.
 
 The model never changes data directly: it proposes actions through strict tools (list, create,
 edit, complete and delete tasks; read the calendar). Every proposed action is validated against
