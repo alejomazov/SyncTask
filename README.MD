@@ -58,6 +58,11 @@ npm install
 npm run dev                 # frontend on http://localhost:5173
 ```
 
+## Deployment
+
+Production runs with `docker-compose.prod.yml` (Caddy serves the built frontend and proxies
+`/api` to the backend) behind Cloudflare. See [deploy/README.md](deploy/README.md).
+
 ## Authentication
 
 Users register and sign in with email and password (`/auth/register`, `/auth/login`,
