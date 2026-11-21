@@ -23,3 +23,9 @@ npm-debug.log*
 .vscode/
 .idea/
 .DS_Store
+
+# Deployment
+deploy/certs/
+deploy/backups/
+deploy/**/*.pem
+deploy/**/*.key
